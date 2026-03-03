@@ -1,0 +1,160 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "ValveResourceFormat",
+  "projectDescription": "A C# library for parsing, decompiling, and exporting Valve's Source 2 resource file formats.",
+  "theme": "aspen",
+  "primaryColor": "#FF6B35",
+  "lightColor": "#FFA26B",
+  "darkColor": "#CC4419",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/resource-files",
+              "concepts/resource-types",
+              "concepts/blocks",
+              "concepts/binary-keyvalues"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/reading-resources",
+              "guides/working-with-vpk",
+              "guides/extracting-textures",
+              "guides/exporting-models",
+              "guides/decompiling-materials",
+              "guides/parsing-maps",
+              "guides/handling-shaders"
+            ]
+          },
+          {
+            "group": "CLI Tool",
+            "pages": [
+              "cli/overview",
+              "cli/commands",
+              "cli/examples"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/custom-loaders",
+              "advanced/performance",
+              "advanced/compression"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core",
+            "pages": [
+              "api/resource",
+              "api/resource-type",
+              "api/block"
+            ]
+          },
+          {
+            "group": "Resource Types",
+            "pages": [
+              "api/resource-types/texture",
+              "api/resource-types/material",
+              "api/resource-types/model",
+              "api/resource-types/mesh",
+              "api/resource-types/sound",
+              "api/resource-types/world",
+              "api/resource-types/particle-system",
+              "api/resource-types/binary-kv3"
+            ]
+          },
+          {
+            "group": "IO & Export",
+            "pages": [
+              "api/io/file-extract",
+              "api/io/texture-extract",
+              "api/io/material-extract",
+              "api/io/model-extract",
+              "api/io/gltf-exporter"
+            ]
+          },
+          {
+            "group": "Blocks",
+            "pages": [
+              "api/blocks/data",
+              "api/blocks/rerl",
+              "api/blocks/redi",
+              "api/blocks/ntro"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "api/utils/compression",
+              "api/utils/texture-decoders"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Source 2 Viewer",
+        "groups": [
+          {
+            "group": "GUI Application",
+            "pages": [
+              "gui/overview",
+              "gui/features",
+              "gui/vpk-browser",
+              "gui/asset-viewer",
+              "gui/settings"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Parse and read Source 2 compiled resource files (models, textures, materials, maps, sounds, particles, etc.)",
+    "Export textures to PNG/TGA/DDS formats with channel manipulation and cubemap support",
+    "Export models and maps to glTF 2.0 format with animations, materials, and physics",
+    "Decompile materials, maps, and other resources to human-readable formats",
+    "Read and extract files from VPK archives using ValvePak library",
+    "Parse binary KeyValues (KV1, KV3) formats",
+    "Decode compiled shaders and convert SPIRV bytecode",
+    "Handle texture compression formats (BC1-BC7, ETC2, ASTC)",
+    "Support for 80+ Source 2 resource types",
+    "Cross-platform .NET library with CLI tool"
+  ],
+  "publicApiSurface": [
+    "Resource.Read(Stream)",
+    "Resource.ResourceType",
+    "Resource.DataBlock",
+    "Texture.GenerateBitmap()",
+    "TextureExtract.ToPngImage()",
+    "Material class",
+    "Model class",
+    "Mesh class",
+    "Sound class",
+    "World class",
+    "BinaryKV3 class",
+    "GltfModelExporter.Export()",
+    "FileExtract.Extract()",
+    "TextureExtract methods",
+    "MaterialExtract methods",
+    "ModelExtract methods"
+  ]
+}
