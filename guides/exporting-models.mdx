@@ -1,0 +1,336 @@
+---
+title: Exporting Models to glTF
+description: Learn how to export Source 2 models to glTF 2.0 format with materials, animations, and skeletons
+---
+
+The `GltfModelExporter` class exports Source 2 models, meshes, and worlds to the glTF 2.0 format, which can be imported into most 3D software.
+
+## Basic Model Export
+
+Export a model resource to glTF:
+
+<Steps>
+  <Step title="Load the model resource">
+    ```csharp
+    using ValveResourceFormat;
+    using ValveResourceFormat.IO;
+    
+    var resource = new Resource();
+    resource.Read("models/props/barrel.vmdl_c");
+    ```
+  </Step>
+
+  <Step title="Create exporter with file loader">
+    ```csharp
+    using var fileLoader = new GameFileLoader(package, fileName);
+    var exporter = new GltfModelExporter(fileLoader)
+    {
+        ProgressReporter = new Progress<string>(s => Console.WriteLine(s))
+    };
+    ```
+  </Step>
+
+  <Step title="Export to glTF">
+    ```csharp
+    exporter.Export(resource, "output.gltf");
+    // Or export as binary GLB
+    exporter.Export(resource, "output.glb");
+    ```
+  </Step>
+</Steps>
+
+<Note>
+`GltfModelExporter` requires an `IFileLoader` to resolve dependencies like materials, textures, and animations.
+</Note>
+
+## Export Options
+
+Configure export behavior with properties:
+
+```csharp
+var exporter = new GltfModelExporter(fileLoader)
+{
+    ExportAnimations = true,      // Include animations
+    ExportMaterials = true,       // Include materials
+    AdaptTextures = true,         // Convert textures for glTF
+    SatelliteImages = true,       // Save images as separate files
+    ExportExtras = false          // Include extra metadata
+};
+
+exporter.Export(resource, "model.gltf");
+```
+
+## Filtering Content
+
+Filter which animations and meshes to export:
+
+```csharp
+var exporter = new GltfModelExporter(fileLoader);
+
+// Export specific animations only
+exporter.AnimationFilter.Add("idle");
+exporter.AnimationFilter.Add("walk");
+
+// Export specific meshes only (does not apply to vmesh)
+exporter.MeshFilter.Add("body");
+exporter.MeshFilter.Add("head");
+
+exporter.Export(resource, "filtered_model.gltf");
+```
+
+## Supported Resource Types
+
+Check if a resource can be exported:
+
+```csharp
+var resource = new Resource();
+resource.Read("example_c");
+
+if (GltfModelExporter.CanExport(resource))
+{
+    Console.WriteLine($"Can export {resource.ResourceType}");
+    var exporter = new GltfModelExporter(fileLoader);
+    exporter.Export(resource, "output.gltf");
+}
+```
+
+Supported types:
+- `ResourceType.Mesh` (vmesh)
+- `ResourceType.Model` (vmdl)
+- `ResourceType.NmClip` (animation clips)
+- `ResourceType.EntityLump` (entity collections)
+- `ResourceType.PhysicsCollisionMesh` (vphys)
+- `ResourceType.WorldNode` (vwnod)
+- `ResourceType.World` (vwrld)
+- `ResourceType.Map` (vmap)
+
+## Exporting Standalone Meshes
+
+Export a mesh resource directly:
+
+```csharp
+using ValveResourceFormat.ResourceTypes;
+
+var resource = new Resource();
+resource.Read("meshes/example.vmesh_c");
+
+if (resource.ResourceType == ResourceType.Mesh)
+{
+    var exporter = new GltfModelExporter(fileLoader);
+    exporter.Export(resource, "mesh.gltf");
+}
+```
+
+## Exporting Worlds and Maps
+
+Export entire maps with entities and world geometry:
+
+```csharp
+// Load a map
+var mapResource = new Resource();
+mapResource.Read("maps/example.vmap_c");
+
+var exporter = new GltfModelExporter(fileLoader)
+{
+    ProgressReporter = new Progress<string>(s => Console.WriteLine(s))
+};
+
+// This will export:
+// - World geometry from all world nodes
+// - Static props
+// - Entity models
+// - Lighting (as glTF lights)
+exporter.Export(mapResource, "map.gltf");
+```
+
+## Exporting Animations
+
+Export animation clips:
+
+```csharp
+using ValveResourceFormat.ResourceTypes.ModelAnimation2;
+
+var clipResource = new Resource();
+clipResource.Read("animations/idle.vanmclip_c");
+
+if (clipResource.ResourceType == ResourceType.NmClip)
+{
+    var exporter = new GltfModelExporter(fileLoader);
+    exporter.Export(clipResource, "animation.gltf");
+}
+```
+
+## Coordinate System Conversion
+
+glTF uses Y-up and meters, Source 2 uses Z-up and inches. The exporter automatically converts:
+
+```csharp
+// Transformation applied to all exports:
+// - Swaps Y and Z axes (Y becomes up)
+// - Scales by 0.0254 (inches to meters)
+// - Applies rotation to match glTF coordinate system
+```
+
+<Note>
+The conversion is handled internally. You don't need to do anything special.
+</Note>
+
+## Material Adaptation
+
+When `AdaptTextures = true`, materials are adapted for glTF PBR:
+
+```csharp
+var exporter = new GltfModelExporter(fileLoader)
+{
+    ExportMaterials = true,
+    AdaptTextures = true,  // Convert Source 2 materials to glTF PBR
+    SatelliteImages = true // Save textures as separate files
+};
+
+exporter.Export(resource, "model.gltf");
+
+// Output will include:
+// - model.gltf (or .glb)
+// - textures/*.png (if SatelliteImages = true)
+```
+
+## Binary vs Text Format
+
+Export as GLB (binary) or glTF (text/JSON):
+
+```csharp
+var exporter = new GltfModelExporter(fileLoader);
+
+// Binary GLB (single file, all data embedded)
+exporter.Export(resource, "model.glb");
+
+// Text glTF (JSON + separate .bin and image files)
+exporter.Export(resource, "model.gltf");
+```
+
+<Warning>
+GLB files are limited to 2GB due to 32-bit buffer size restrictions:
+```csharp
+// For large models, use .gltf instead of .glb
+exporter.Export(largeMap, "large_map.gltf"); // Splits into 1GB chunks
+```
+</Warning>
+
+## Physics Export
+
+Physics collision meshes can be exported separately:
+
+```csharp
+var physResource = new Resource();
+physResource.Read("physics/collision.vphys_c");
+
+if (physResource.ResourceType == ResourceType.PhysicsCollisionMesh)
+{
+    var exporter = new GltfModelExporter(fileLoader);
+    exporter.Export(physResource, "collision.gltf");
+}
+```
+
+When exporting models with embedded physics, a separate `_physics.gltf` file is created.
+
+## Progress Reporting
+
+Monitor export progress:
+
+```csharp
+var progress = new Progress<string>(message =>
+{
+    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {message}");
+});
+
+var exporter = new GltfModelExporter(fileLoader)
+{
+    ProgressReporter = progress
+};
+
+exporter.Export(resource, "model.gltf");
+
+// Output:
+// [14:32:10] Loading model example
+// [14:32:11] Exporting meshes...
+// [14:32:12] Exporting animations...
+// [14:32:13] Writing model to file 'model.gltf'...
+```
+
+## Cancellation Support
+
+Cancel long-running exports:
+
+```csharp
+var cts = new CancellationTokenSource();
+
+// Cancel after 30 seconds
+cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+try
+{
+    var exporter = new GltfModelExporter(fileLoader);
+    exporter.Export(resource, "model.gltf", cts.Token);
+}
+catch (OperationCanceledException)
+{
+    Console.WriteLine("Export cancelled");
+}
+```
+
+## Complete Example
+
+Put it all together:
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.IO;
+using SteamDatabase.ValvePak;
+
+// Open VPK package
+using var package = new Package();
+package.Read("pak01_dir.vpk");
+
+// Create file loader
+using var fileLoader = new GameFileLoader(package, "pak01_dir.vpk");
+
+// Load model resource
+var resource = fileLoader.LoadFile("models/props/barrel.vmdl_c");
+if (resource == null)
+{
+    Console.WriteLine("Model not found");
+    return;
+}
+
+// Setup exporter
+var exporter = new GltfModelExporter(fileLoader)
+{
+    ExportAnimations = true,
+    ExportMaterials = true,
+    AdaptTextures = true,
+    SatelliteImages = true,
+    ProgressReporter = new Progress<string>(Console.WriteLine)
+};
+
+// Export
+try
+{
+    exporter.Export(resource, "barrel.gltf");
+    Console.WriteLine("Export complete!");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Export failed: {ex.Message}");
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Decompiling Materials" icon="palette" href="/guides/decompiling-materials">
+    Extract material definitions
+  </Card>
+  <Card title="Parsing Maps" icon="map" href="/guides/parsing-maps">
+    Work with map and world files
+  </Card>
+</CardGroup>

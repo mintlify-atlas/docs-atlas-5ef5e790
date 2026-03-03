@@ -1,0 +1,208 @@
+---
+title: FileExtract
+description: Extract content files from compiled Source 2 resources
+---
+
+The `FileExtract` class provides methods for extracting content files from compiled Valve resources. It serves as the main entry point for extracting various resource types into editable formats.
+
+## Key Classes
+
+### ContentFile
+
+Represents a content file extracted from a compiled resource.
+
+<ParamField path="Data" type="byte[]?">
+  The extracted file data. Can be null if the file contains only subfiles.
+</ParamField>
+
+<ParamField path="FileName" type="string">
+  Suggested output file name based on the resource name. Automatically strips `_c` suffix.
+</ParamField>
+
+<ParamField path="SubFiles" type="List<SubFile>">
+  Additional files that make up this content file (e.g., PNG files for a texture).
+</ParamField>
+
+<ParamField path="AdditionalFiles" type="List<ContentFile>">
+  Additional extracted resources (e.g., textures referenced by a material).
+</ParamField>
+
+#### Methods
+
+<ParamField path="AddSubFile" type="void">
+  Adds a sub-file to be extracted alongside the main content file.
+  
+  **Parameters:**
+  - `fileName` (string) - The file name relative to the content file
+  - `extractMethod` (Func&lt;byte[]&gt;) - Function that returns the file data when called
+</ParamField>
+
+### SubFile
+
+Represents a sub-file that is part of a content file extraction.
+
+<ParamField path="FileName" type="string">
+  The file name relative to the content file.
+</ParamField>
+
+<ParamField path="Extract" type="Func<byte[]>?">
+  Extraction function that returns the file data.
+</ParamField>
+
+### TrackingFileLoader
+
+A file loader wrapper that tracks which files have been loaded.
+
+<ParamField path="LoadedFilePaths" type="HashSet<string>">
+  Set of file paths that have been loaded.
+</ParamField>
+
+## Static Methods
+
+### Extract
+
+```csharp
+public static ContentFile Extract(
+    Resource resource,
+    IFileLoader fileLoader,
+    IProgress<string>? progress = null
+)
+```
+
+Extract content file from a compiled resource.
+
+<ParamField path="resource" type="Resource" required>
+  The resource to be extracted or decompiled.
+</ParamField>
+
+<ParamField path="fileLoader" type="IFileLoader" required>
+  The file loader for resolving dependencies.
+</ParamField>
+
+<ParamField path="progress" type="IProgress<string>?">
+  Optional progress reporter.
+</ParamField>
+
+**Returns:** `ContentFile` - The extracted content file with data and subfiles.
+
+**Supported Resource Types:**
+- Map/World - Extracts to ValveMap format
+- Model - Extracts to VMDL/DMX format
+- Texture - Extracts to PNG/EXR with vtex file
+- Material - Extracts to VMAT with textures
+- Sound - Extracts audio and vsnd files
+- Particle - Extracts particle system definitions
+- AnimationGraph - Extracts animation graph data
+- And many more...
+
+### ExtractNonResource
+
+```csharp
+public static ContentFile? ExtractNonResource(
+    Stream stream,
+    string fileName
+)
+```
+
+Extract content file from a non-resource stream (e.g., closed captions, flex scenes).
+
+<ParamField path="stream" type="Stream" required>
+  Stream to be extracted or decompiled.
+</ParamField>
+
+<ParamField path="fileName" type="string" required>
+  The file name for context.
+</ParamField>
+
+**Returns:** `ContentFile?` - The extracted content file, or null if format is not recognized.
+
+### TryExtractNonResource
+
+```csharp
+public static bool TryExtractNonResource(
+    Stream stream,
+    string fileName,
+    out ContentFile? contentFile
+)
+```
+
+Attempts to extract content from a non-resource stream.
+
+**Returns:** `bool` - True if extraction succeeded, false otherwise.
+
+### GetExtension
+
+```csharp
+public static string GetExtension(Resource resource)
+```
+
+Gets the appropriate file extension for the extracted resource.
+
+<ParamField path="resource" type="Resource" required>
+  The resource to get the extension for.
+</ParamField>
+
+**Returns:** `string` - The file extension (without dot) for the extracted content.
+
+**Examples:**
+- Texture (child resource) → "png" or "exr"
+- Texture (main resource) → "vtex"
+- Sound (MP3) → "mp3"
+- Sound (WAV) → "wav"
+- PanoramaLayout → "xml"
+- PanoramaScript → "js"
+
+### IsChildResource
+
+```csharp
+public static bool IsChildResource(Resource resource)
+```
+
+Determines whether the resource is a child resource (embedded in another resource).
+
+## Usage Example
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.IO;
+
+// Load a compiled resource
+var resource = new Resource();
+resource.Read("path/to/model.vmdl_c");
+
+// Create a file loader for dependencies
+var fileLoader = new GameFileLoader("path/to/game");
+
+// Extract the resource
+var contentFile = FileExtract.Extract(resource, fileLoader);
+
+// Write the main file
+if (contentFile.Data != null)
+{
+    File.WriteAllBytes(contentFile.FileName, contentFile.Data);
+}
+
+// Write subfiles
+foreach (var subFile in contentFile.SubFiles)
+{
+    var data = subFile.Extract?.Invoke();
+    if (data != null)
+    {
+        File.WriteAllBytes(subFile.FileName, data);
+    }
+}
+
+// Handle additional files (like textures from a material)
+foreach (var additionalFile in contentFile.AdditionalFiles)
+{
+    // Process additional files recursively
+}
+```
+
+## Notes
+
+- The `FileExtract` class automatically selects the appropriate extraction method based on resource type
+- SubFiles use lazy extraction - data is only generated when the `Extract` function is called
+- AdditionalFiles contain referenced resources that should be extracted alongside the main file
+- The class handles both compiled resources (`.vmdl_c`, `.vtex_c`, etc.) and non-resource files
+- Child resources (like embedded textures) are extracted differently than standalone resources

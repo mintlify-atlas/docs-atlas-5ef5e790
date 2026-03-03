@@ -1,0 +1,241 @@
+---
+title: Working with VPK Archives
+description: Learn how to read and extract files from Source 2 VPK archive packages using ValvePak
+---
+
+VPK (Valve Package) files are archive packages used by Source 2 to store game assets. ValveResourceFormat uses the ValvePak library to read from these archives.
+
+## Opening VPK Archives
+
+Use the `Package` class from `SteamDatabase.ValvePak` to open VPK files:
+
+<Steps>
+  <Step title="Reference the namespace">
+    ```csharp
+    using SteamDatabase.ValvePak;
+    ```
+  </Step>
+
+  <Step title="Open a VPK package">
+    ```csharp
+    var package = new Package();
+    package.Read("pak01_dir.vpk");
+    ```
+  </Step>
+
+  <Step title="List entries">
+    ```csharp
+    foreach (var type in package.Entries)
+    {
+        Console.WriteLine($"Type: {type.Key}");
+        foreach (var entry in type.Value)
+        {
+            Console.WriteLine($"  {entry.GetFullPath()}");
+        }
+    }
+    ```
+  </Step>
+</Steps>
+
+## Finding Files in VPK
+
+The `Package.FindEntry` method locates files within the archive:
+
+```csharp
+using var package = new Package();
+package.Read("pak01_dir.vpk");
+
+// Find a specific file
+var entry = package.FindEntry("models/props/barrel.vmdl_c");
+if (entry != null)
+{
+    Console.WriteLine($"Found: {entry.GetFullPath()}");
+    Console.WriteLine($"Size: {entry.SmallData.Length} bytes");
+    Console.WriteLine($"CRC: {entry.CRC32:X8}");
+}
+```
+
+## Reading File Contents
+
+Extract file data from VPK entries:
+
+```csharp
+var entry = package.FindEntry("materials/example.vmat_c");
+if (entry != null)
+{
+    // Read the entry data
+    package.ReadEntry(entry, out var data);
+    
+    // Use the data
+    using var stream = new MemoryStream(data);
+    var resource = new Resource();
+    resource.Read(stream);
+}
+```
+
+## GameFileLoader Integration
+
+The `GameFileLoader` class automatically handles VPK packages and file system lookups:
+
+```csharp
+using ValveResourceFormat.IO;
+
+// Create a file loader with current package
+using var package = new Package();
+package.Read("pak01_dir.vpk");
+
+using var fileLoader = new GameFileLoader(package, packageFileName: "pak01_dir.vpk");
+
+// Load compiled resources
+var resource = fileLoader.LoadFile("models/props/crate.vmdl_c");
+if (resource != null)
+{
+    Console.WriteLine($"Loaded: {resource.FileName}");
+    // Work with the resource
+}
+```
+
+<Note>
+`GameFileLoader` automatically searches:
+1. Current package
+2. Additional game packages (found via gameinfo.gi)
+3. Loose files on disk
+4. Workshop dependencies
+</Note>
+
+## Loading from Multiple VPKs
+
+The `GameFileLoader` can search across multiple VPK packages:
+
+```csharp
+// GameFileLoader finds gameinfo.gi and automatically loads all referenced VPKs
+using var fileLoader = new GameFileLoader(
+    currentPackage: package,
+    currentFileName: "game/pak01_dir.vpk"
+);
+
+// This will search all loaded packages
+var texture = fileLoader.LoadFileCompiled("materials/dev/dev_metal.vtex");
+if (texture != null)
+{
+    var textureData = (Texture)texture.DataBlock;
+    Console.WriteLine($"Texture format: {textureData.Format}");
+}
+```
+
+## Package Entry Streams
+
+For efficiency, you can get a stream directly from a package entry:
+
+```csharp
+var entry = package.FindEntry("sounds/ambient/wind.vsnd_c");
+if (entry != null)
+{
+    // Get stream (internal GameFileLoader method pattern)
+    package.ReadEntry(entry, out var data);
+    using var stream = new MemoryStream(data);
+    
+    // Read the resource
+    var resource = new Resource();
+    resource.Read(stream, verifyFileSize: true, leaveOpen: false);
+}
+```
+
+## Finding Shaders
+
+Load shader collections across multiple packages:
+
+```csharp
+using var fileLoader = new GameFileLoader(package, packageFileName);
+
+var shaderCollection = fileLoader.LoadShader("vr_complex.vfx");
+if (shaderCollection != null)
+{
+    Console.WriteLine($"Features: {shaderCollection.Features?.ShaderName}");
+    Console.WriteLine($"Vertex: {shaderCollection.Vertex?.ShaderName}");
+    Console.WriteLine($"Pixel: {shaderCollection.Pixel?.ShaderName}");
+}
+```
+
+## Extracting All Files
+
+Iterate through all entries to extract files:
+
+```csharp
+using var package = new Package();
+package.Read("pak01_dir.vpk");
+
+var outputDir = "extracted";
+Directory.CreateDirectory(outputDir);
+
+foreach (var typeEntry in package.Entries)
+{
+    foreach (var entry in typeEntry.Value)
+    {
+        var filePath = entry.GetFullPath();
+        var outputPath = Path.Combine(outputDir, filePath);
+        
+        // Create directory
+        var directory = Path.GetDirectoryName(outputPath);
+        if (directory != null)
+        {
+            Directory.CreateDirectory(directory);
+        }
+        
+        // Extract file
+        package.ReadEntry(entry, out var data);
+        File.WriteAllBytes(outputPath, data);
+        
+        Console.WriteLine($"Extracted: {filePath}");
+    }
+}
+```
+
+<Warning>
+VPK packages can be very large. Consider filtering files before extraction:
+```csharp
+if (filePath.EndsWith(".vmat_c") || filePath.EndsWith(".vtex_c"))
+{
+    // Only extract materials and textures
+}
+```
+</Warning>
+
+## Compiled File Suffix
+
+When loading compiled resources, use the `CompiledFileSuffix` constant:
+
+```csharp
+using ValveResourceFormat.IO;
+
+var baseName = "models/props/barrel.vmdl";
+var compiledName = baseName + GameFileLoader.CompiledFileSuffix; // "models/props/barrel.vmdl_c"
+
+var resource = fileLoader.LoadFile(compiledName);
+
+// Or use the helper method
+var resource2 = fileLoader.LoadFileCompiled(baseName);
+```
+
+## Cleanup
+
+Always dispose of packages and file loaders:
+
+```csharp
+using (var package = new Package())
+using (var fileLoader = new GameFileLoader(package, fileName))
+{
+    // Work with files
+} // Automatically disposed
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Reading Resources" icon="file" href="/guides/reading-resources">
+    Learn about resource file structure
+  </Card>
+  <Card title="Exporting Models" icon="cube" href="/guides/exporting-models">
+    Export models to glTF format
+  </Card>
+</CardGroup>

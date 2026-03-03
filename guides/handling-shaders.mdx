@@ -1,0 +1,402 @@
+---
+title: Handling Shader Decompilation
+description: Learn how to decompile and extract Source 2 shader programs to readable VFX format
+---
+
+The `ShaderExtract` class decompiles compiled shader resources (SboxShader) back to readable VFX (Valve FX) format with all features, combos, and parameters.
+
+## Basic Shader Extraction
+
+Extract a shader resource to VFX format:
+
+<Steps>
+  <Step title="Load the shader resource">
+    ```csharp
+    using ValveResourceFormat;
+    using ValveResourceFormat.IO;
+    
+    var resource = new Resource();
+    resource.Read("shaders/vr_complex.vfx_c");
+    ```
+  </Step>
+
+  <Step title="Create ShaderExtract instance">
+    ```csharp
+    var shaderExtract = new ShaderExtract(resource);
+    ```
+  </Step>
+
+  <Step title="Extract to VFX string">
+    ```csharp
+    var vfxCode = shaderExtract.ToVFX();
+    Console.WriteLine(vfxCode);
+    ```
+  </Step>
+
+  <Step title="Save to file">
+    ```csharp
+    var fileName = shaderExtract.GetVfxFileName();
+    File.WriteAllText(fileName, vfxCode);
+    ```
+  </Step>
+</Steps>
+
+## Shader Collection Access
+
+Access individual shader programs:
+
+```csharp
+using ValveResourceFormat.CompiledShader;
+
+var shaderExtract = new ShaderExtract(resource);
+
+// Access shader stages
+if (shaderExtract.Features != null)
+{
+    Console.WriteLine($"Features: {shaderExtract.Features.ShaderName}");
+    Console.WriteLine($"Static combos: {shaderExtract.Features.StaticComboArray.Length}");
+}
+
+if (shaderExtract.Vertex != null)
+{
+    Console.WriteLine($"Vertex shader: {shaderExtract.Vertex.ShaderName}");
+    Console.WriteLine($"Platform: {shaderExtract.Vertex.VcsPlatformType}");
+    Console.WriteLine($"Model: {shaderExtract.Vertex.VcsShaderModelType}");
+}
+
+if (shaderExtract.Pixel != null)
+{
+    Console.WriteLine($"Pixel shader: {shaderExtract.Pixel.ShaderName}");
+}
+
+if (shaderExtract.Geometry != null)
+{
+    Console.WriteLine($"Geometry shader: {shaderExtract.Geometry.ShaderName}");
+}
+
+if (shaderExtract.Compute != null)
+{
+    Console.WriteLine($"Compute shader: {shaderExtract.Compute.ShaderName}");
+}
+```
+
+## Extract Options
+
+Control shader extraction behavior:
+
+```csharp
+var shaderExtract = new ShaderExtract(resource);
+
+// For shader inspection (limited static combos)
+var vfxCode = shaderExtract.ToVFX();
+// Uses ShaderExtractParams.Inspect (reads up to 512 static combos)
+
+// For shader export (all static combos)
+var (vfxContent, includes) = shaderExtract.ToVFX(ShaderExtract.ShaderExtractParams.Export);
+
+// Save main VFX file
+File.WriteAllText("shader.vfx", vfxContent);
+
+// Save include files
+foreach (var (fileName, content) in includes)
+{
+    var includePath = Path.Combine("includes", fileName);
+    Directory.CreateDirectory(Path.GetDirectoryName(includePath));
+    File.WriteAllText(includePath, content);
+}
+```
+
+## Custom Extract Parameters
+
+Fine-tune extraction settings:
+
+```csharp
+var customParams = new ShaderExtract.ShaderExtractParams
+{
+    WriteParametersRaw = true,
+    CollapseAllBuffers = false,
+    CollapseBuffers_InInclude = false,
+    CollapseBuffers_InPlace = false,
+    ForceWrite_UncertainEnumsAsInts = false,
+    NoHungarianTypeGuessing = false,
+    StaticComboReadingCap = 1024,  // Read up to 1024 static combos
+    StaticComboAttributes_NoSeparateGlobals = false,
+    StaticComboAttributes_NoConditionalReduce = false
+};
+
+var (vfxContent, includes) = shaderExtract.ToVFX(customParams);
+```
+
+## ContentFile Extraction
+
+Extract shader to ContentFile for easier file management:
+
+```csharp
+using var contentFile = shaderExtract.ToContentFile();
+
+// Main VFX file
+if (contentFile.Data != null)
+{
+    var vfxPath = shaderExtract.GetVfxFileName();
+    File.WriteAllBytes(vfxPath, contentFile.Data);
+}
+
+// Include files
+foreach (var subFile in contentFile.SubFiles)
+{
+    var data = subFile.Extract();
+    File.WriteAllBytes(subFile.FileName, data);
+}
+```
+
+## Shader Features
+
+Access shader feature definitions:
+
+```csharp
+var features = shaderExtract.Features;
+if (features != null)
+{
+    foreach (var feature in features.StaticComboArray)
+    {
+        Console.WriteLine($"Feature: {feature.Name}");
+        Console.WriteLine($"  Range: {feature.RangeMin}..{feature.RangeMax}");
+        Console.WriteLine($"  Alias: {feature.AliasName}");
+        
+        if (feature.Strings.Length > 0)
+        {
+            for (var i = 0; i < feature.Strings.Length; i++)
+            {
+                Console.WriteLine($"  {i}: {feature.Strings[i]}");
+            }
+        }
+    }
+}
+```
+
+## Static and Dynamic Combos
+
+Shaders use combo systems for variations:
+
+```csharp
+var vertexShader = shaderExtract.Vertex;
+if (vertexShader != null)
+{
+    // Static combos (compile-time variations)
+    Console.WriteLine("Static combos:");
+    foreach (var combo in vertexShader.StaticComboArray)
+    {
+        Console.WriteLine($"  {combo.Name}: {combo.RangeMin}..{combo.RangeMax}");
+    }
+    
+    // Dynamic combos (runtime variations)
+    Console.WriteLine("Dynamic combos:");
+    foreach (var combo in vertexShader.DynamicComboArray)
+    {
+        Console.WriteLine($"  {combo.Name}: {combo.RangeMin}..{combo.RangeMax}");
+    }
+    
+    // Static combo entries (actual compiled variants)
+    Console.WriteLine($"Total variants: {vertexShader.StaticComboEntries.Count}");
+}
+```
+
+## Shader Parameters
+
+Access shader variable descriptions:
+
+```csharp
+var pixelShader = shaderExtract.Pixel;
+if (pixelShader != null)
+{
+    foreach (var param in pixelShader.VariableDescriptions)
+    {
+        Console.WriteLine($"Parameter: {param.Name}");
+        Console.WriteLine($"  Type: {param.VfxType}");
+        Console.WriteLine($"  Register type: {param.RegisterType}");
+        
+        if (param.UiGroup.Heading.Length > 0)
+        {
+            Console.WriteLine($"  UI Group: {param.UiGroup.Heading}");
+        }
+        
+        // Default values
+        Console.WriteLine($"  Defaults: [{string.Join(", ", param.FloatDefs)}]");
+        
+        // Value ranges
+        Console.WriteLine($"  Min: [{string.Join(", ", param.FloatMins)}]");
+        Console.WriteLine($"  Max: [{string.Join(", ", param.FloatMaxs)}]");
+    }
+}
+```
+
+## Constant Buffers
+
+Access shader constant buffer definitions:
+
+```csharp
+var vertexShader = shaderExtract.Vertex;
+if (vertexShader != null)
+{
+    foreach (var cbuffer in vertexShader.ExtConstantBufferDescriptions)
+    {
+        Console.WriteLine($"CBuffer: {cbuffer.Name}");
+        Console.WriteLine($"  Block CRC: {cbuffer.BlockCrc:X8}");
+        
+        foreach (var variable in cbuffer.Variables)
+        {
+            Console.WriteLine($"  {variable.Name}");
+            Console.WriteLine($"    Vector size: {variable.VectorSize}");
+            Console.WriteLine($"    Depth: {variable.Depth}");
+            Console.WriteLine($"    Length: {variable.Length}");
+        }
+    }
+}
+```
+
+## Vertex Input Signatures
+
+Get vertex shader input layouts:
+
+```csharp
+var vertexShader = shaderExtract.Vertex;
+if (vertexShader != null)
+{
+    foreach (var signature in vertexShader.VSInputSignatures)
+    {
+        Console.WriteLine("Vertex input:");
+        foreach (var symbol in signature.SymbolsDefinition)
+        {
+            Console.WriteLine($"  {symbol.Name}: {symbol.D3DSemanticName}{symbol.D3DSemanticIndex}");
+            Console.WriteLine($"    Semantic: {symbol.Semantic}");
+        }
+    }
+}
+```
+
+## Texture Channel Processors
+
+Texture sampling and channel mapping:
+
+```csharp
+var pixelShader = shaderExtract.Pixel;
+if (pixelShader != null)
+{
+    foreach (var processor in pixelShader.TextureChannelProcessors)
+    {
+        Console.WriteLine($"Texture: {processor.TextureName}");
+        Console.WriteLine($"  Sampler: {processor.SamplerName}");
+        Console.WriteLine($"  Default: {processor.DefaultTextureName}");
+    }
+}
+```
+
+## Variant Parameters
+
+Get parameters that vary by static combo:
+
+```csharp
+var pixelShader = shaderExtract.Pixel;
+if (pixelShader != null && pixelShader.StaticComboEntries.Count > 0)
+{
+    // Get first variant
+    var firstVariant = pixelShader.StaticComboEntries.First().Value.Unserialize();
+    
+    // Get variant parameters
+    var variantParams = shaderExtract.GetVariantZFrameParameters(firstVariant);
+    
+    Console.WriteLine($"Variant parameters: {variantParams.Count}");
+    foreach (var paramIndex in variantParams)
+    {
+        var param = pixelShader.VariableDescriptions[paramIndex];
+        Console.WriteLine($"  {param.Name} ({param.VfxType})");
+    }
+}
+```
+
+## Complete Shader Extraction Example
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.IO;
+using ValveResourceFormat.CompiledShader;
+
+// Load shader
+var resource = new Resource();
+resource.Read("shaders/vr_complex.vfx_c");
+
+// Create extractor
+var shaderExtract = new ShaderExtract(resource);
+
+// Log shader information
+Console.WriteLine($"Shader: {shaderExtract.GetVfxFileName()}");
+Console.WriteLine($"Has Features: {shaderExtract.Features != null}");
+Console.WriteLine($"Has Vertex: {shaderExtract.Vertex != null}");
+Console.WriteLine($"Has Pixel: {shaderExtract.Pixel != null}");
+Console.WriteLine($"Has Geometry: {shaderExtract.Geometry != null}");
+Console.WriteLine($"Has Compute: {shaderExtract.Compute != null}");
+
+// Extract with all static combos
+var exportParams = ShaderExtract.ShaderExtractParams.Export;
+var (vfxContent, includes) = shaderExtract.ToVFX(exportParams);
+
+// Save main VFX file
+var vfxPath = shaderExtract.GetVfxFileName();
+File.WriteAllText(vfxPath, vfxContent);
+Console.WriteLine($"Saved: {vfxPath}");
+
+// Save includes
+var includeDir = "common";
+Directory.CreateDirectory(includeDir);
+
+foreach (var (fileName, content) in includes)
+{
+    var includePath = Path.Combine(fileName);
+    Directory.CreateDirectory(Path.GetDirectoryName(includePath));
+    File.WriteAllText(includePath, content);
+    Console.WriteLine($"Saved: {includePath}");
+}
+
+Console.WriteLine("Shader extraction complete!");
+```
+
+<Warning>
+Shader extraction can be CPU intensive:
+```csharp
+// Limit static combo reading for faster extraction
+var params = ShaderExtract.ShaderExtractParams.Inspect with
+{
+    StaticComboReadingCap = 100  // Only read first 100 variants
+};
+
+var vfxCode = shaderExtract.ToVFX(params);
+```
+</Warning>
+
+## Loading Shader Collections
+
+Load complete shader collections using GameFileLoader:
+
+```csharp
+using var fileLoader = new GameFileLoader(package, fileName);
+
+var shaderCollection = fileLoader.LoadShader("vr_complex.vfx");
+if (shaderCollection != null)
+{
+    var shaderExtract = new ShaderExtract(shaderCollection);
+    var vfxCode = shaderExtract.ToVFX();
+    
+    Console.WriteLine(vfxCode);
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Decompiling Materials" icon="palette" href="/guides/decompiling-materials">
+    Materials reference shaders
+  </Card>
+  <Card title="Reading Resources" icon="file" href="/guides/reading-resources">
+    Understand resource structure
+  </Card>
+</CardGroup>

@@ -1,0 +1,270 @@
+---
+title: Block
+description: Abstract base class representing a block within a Source 2 resource file
+---
+
+The `Block` class is the base class for all data blocks contained within a Source 2 resource file. Each resource file contains one or more blocks, such as DATA, RERL, REDI, VBIB, etc.
+
+## Class Definition
+
+```csharp
+public abstract class Block
+```
+
+## Properties
+
+<ResponseField name="Type" type="BlockType">
+  Gets the block type. This is an abstract property that must be implemented by derived classes.
+</ResponseField>
+
+<ResponseField name="Offset" type="uint">
+  Gets or sets the offset to the data within the resource file.
+</ResponseField>
+
+<ResponseField name="Size" type="uint">
+  Gets or sets the data size in bytes.
+</ResponseField>
+
+<ResponseField name="Resource" type="Resource" required>
+  Gets the resource this block belongs to. Can technically be null if constructed outside of a Resource.
+</ResponseField>
+
+## Abstract Methods
+
+### Read
+
+<ParamField path="Read(BinaryReader)" type="void">
+  Reads the block data from a binary reader. Must be implemented by derived classes.
+  
+  <ParamField path="reader" type="BinaryReader" required>
+    The binary reader to read from
+  </ParamField>
+</ParamField>
+
+### WriteText
+
+<ParamField path="WriteText(IndentedTextWriter)" type="void">
+  Writes the correct text dump of the object to IndentedTextWriter. Must be implemented by derived classes.
+  
+  <ParamField path="writer" type="IndentedTextWriter" required>
+    IndentedTextWriter to write formatted output to
+  </ParamField>
+</ParamField>
+
+### Serialize
+
+<ParamField path="Serialize(Stream)" type="void">
+  Writes the binary representation of the object to Stream. Must be implemented by derived classes.
+  
+  <ParamField path="stream" type="Stream" required>
+    Stream to write binary data to
+  </ParamField>
+  
+  <Warning>
+    Not all block types support serialization. Some implementations may throw NotImplementedException.
+  </Warning>
+</ParamField>
+
+## Methods
+
+### ToString
+
+<ParamField path="ToString()" type="string">
+  Returns a string representation of the block by calling WriteText internally.
+  
+  <ResponseField name="returns" type="string">
+    A formatted text representation of the block
+  </ResponseField>
+</ParamField>
+
+```csharp
+var block = resource.GetBlockByType(BlockType.DATA);
+Console.WriteLine(block.ToString());
+```
+
+## Common Block Types
+
+Blocks are strongly typed based on their BlockType. Here are some common block implementations:
+
+### DATA Block
+
+The primary data block containing resource-specific content. The actual type depends on the ResourceType:
+
+- **Material** → `Material` block
+- **Model** → `Model` block  
+- **Texture** → `Texture` block
+- **Sound** → `Sound` block
+- **Particle** → `ParticleSystem` block
+
+### RERL Block
+
+`ResourceExtRefList` - Contains external resource references.
+
+### REDI/RED2 Blocks
+
+`ResourceEditInfo`/`ResourceEditInfo2` - Contains compilation metadata and dependencies.
+
+### VBIB Block
+
+`VBIB` - Contains vertex and index buffer data for meshes.
+
+### NTRO Block
+
+`ResourceIntrospectionManifest` - Contains structure definitions for legacy resource data.
+
+## Usage Examples
+
+### Accessing Block Properties
+
+```csharp
+using ValveResourceFormat;
+
+using var resource = new Resource();
+resource.Read("models/props/barrel.vmdl_c");
+
+foreach (var block in resource.Blocks)
+{
+    Console.WriteLine($"Block Type: {block.Type}");
+    Console.WriteLine($"  Offset: {block.Offset}");
+    Console.WriteLine($"  Size: {block.Size} bytes");
+    Console.WriteLine($"  Resource: {block.Resource.FileName}");
+}
+```
+
+### Finding Specific Blocks
+
+```csharp
+using var resource = new Resource();
+resource.Read("materials/metal.vmat_c");
+
+// Get DATA block
+var dataBlock = resource.GetBlockByType(BlockType.DATA);
+if (dataBlock is Material material)
+{
+    Console.WriteLine($"Material shader: {material.ShaderName}");
+}
+
+// Get RERL block for external references
+var rerlBlock = resource.GetBlockByType(BlockType.RERL);
+if (rerlBlock is ResourceExtRefList extRefs)
+{
+    foreach (var reference in extRefs.ResourceRefInfoList)
+    {
+        Console.WriteLine($"External reference: {reference.Name}");
+    }
+}
+```
+
+### Dumping Block Contents
+
+```csharp
+using var resource = new Resource();
+resource.Read("particles/explosion.vpcf_c");
+
+var dataBlock = resource.DataBlock;
+if (dataBlock != null)
+{
+    // ToString() calls WriteText() internally
+    var blockText = dataBlock.ToString();
+    Console.WriteLine(blockText);
+    
+    // Or write to a file
+    File.WriteAllText("block_dump.txt", blockText);
+}
+```
+
+### Type Casting Blocks
+
+```csharp
+using var resource = new Resource();
+resource.Read("models/characters/hero.vmdl_c");
+
+var dataBlock = resource.DataBlock;
+
+if (dataBlock is Model model)
+{
+    Console.WriteLine($"Model has {model.GetEmbeddedMeshes().Count()} embedded meshes");
+    Console.WriteLine($"Skeleton has {model.GetSkeleton()?.Bones.Count ?? 0} bones");
+}
+```
+
+### Iterating Block Types
+
+```csharp
+using var resource = new Resource();
+resource.Read("sounds/ambient/wind.vsnd_c");
+
+// Check for specific block types
+if (resource.ContainsBlockType(BlockType.CTRL))
+{
+    Console.WriteLine("Contains control data");
+}
+
+if (resource.ContainsBlockType(BlockType.DATA))
+{
+    var sound = (Sound)resource.DataBlock;
+    Console.WriteLine($"Sound type: {sound.SoundType}");
+    Console.WriteLine($"Sample rate: {sound.SampleRate} Hz");
+}
+```
+
+### Writing Block Text to Custom Writer
+
+```csharp
+using var resource = new Resource();
+resource.Read("materials/wood.vmat_c");
+
+var dataBlock = resource.DataBlock;
+if (dataBlock != null)
+{
+    using var writer = new IndentedTextWriter();
+    dataBlock.WriteText(writer);
+    
+    var output = writer.ToString();
+    Console.WriteLine(output);
+}
+```
+
+## Block Lifecycle
+
+1. **Construction** - Block instances are created by the Resource class during parsing
+2. **Reading** - `Read()` is called to parse block data from the binary stream
+3. **Access** - Blocks are accessed via `Resource.Blocks`, `Resource.DataBlock`, or `Resource.GetBlockByType()`
+4. **Serialization** - Optionally, `Serialize()` can write blocks back to binary format
+
+## Custom Block Implementation
+
+To create a custom block type:
+
+```csharp
+public class CustomBlock : Block
+{
+    public override BlockType Type => BlockType.DATA;
+    
+    public string CustomData { get; private set; }
+    
+    public override void Read(BinaryReader reader)
+    {
+        reader.BaseStream.Position = Offset;
+        // Read your custom data
+        CustomData = reader.ReadString();
+    }
+    
+    public override void WriteText(IndentedTextWriter writer)
+    {
+        writer.WriteLine($"Custom Data: {CustomData}");
+    }
+    
+    public override void Serialize(Stream stream)
+    {
+        using var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true);
+        writer.Write(CustomData);
+    }
+}
+```
+
+## See Also
+
+- [Resource](/api/resource) - Main resource class that contains blocks
+- [Blocks](/concepts/blocks) - Learn about block types
+- [ResourceType](/api/resource-type) - Enum of resource file types

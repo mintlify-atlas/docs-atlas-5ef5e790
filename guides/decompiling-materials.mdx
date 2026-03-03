@@ -1,0 +1,365 @@
+---
+title: Decompiling Materials
+description: Learn how to extract and decompile Source 2 material definitions to editable vmat format
+---
+
+The `MaterialExtract` class converts compiled material resources back to editable vmat (Valve Material) format with associated textures.
+
+## Basic Material Extraction
+
+Extract a material resource to vmat format:
+
+<Steps>
+  <Step title="Load the material resource">
+    ```csharp
+    using ValveResourceFormat;
+    using ValveResourceFormat.IO;
+    
+    var resource = new Resource();
+    resource.Read("materials/metal/metal_01.vmat_c");
+    ```
+  </Step>
+
+  <Step title="Create MaterialExtract with file loader">
+    ```csharp
+    using var fileLoader = new GameFileLoader(package, fileName);
+    var materialExtract = new MaterialExtract(resource, fileLoader);
+    ```
+  </Step>
+
+  <Step title="Extract to ContentFile">
+    ```csharp
+    using var contentFile = materialExtract.ToContentFile();
+    ```
+  </Step>
+
+  <Step title="Save the vmat file">
+    ```csharp
+    if (contentFile.Data != null)
+    {
+        File.WriteAllBytes("metal_01.vmat", contentFile.Data);
+    }
+    
+    // Save texture files
+    foreach (var additionalFile in contentFile.AdditionalFiles)
+    {
+        foreach (var subFile in additionalFile.SubFiles)
+        {
+            var data = subFile.Extract();
+            File.WriteAllBytes(subFile.FileName, data);
+        }
+    }
+    ```
+  </Step>
+</Steps>
+
+<Note>
+`MaterialExtract` requires an `IFileLoader` to resolve and extract texture dependencies.
+</Note>
+
+## Material Data Structure
+
+Access material properties directly:
+
+```csharp
+using ValveResourceFormat.ResourceTypes;
+
+var material = (Material)resource.DataBlock;
+
+// Basic properties
+Console.WriteLine($"Shader: {material.ShaderName}");
+
+// Integer parameters
+foreach (var (key, value) in material.IntParams)
+{
+    Console.WriteLine($"Int: {key} = {value}");
+}
+
+// Float parameters
+foreach (var (key, value) in material.FloatParams)
+{
+    Console.WriteLine($"Float: {key} = {value}");
+}
+
+// Vector parameters
+foreach (var (key, value) in material.VectorParams)
+{
+    Console.WriteLine($"Vector: {key} = [{value.X}, {value.Y}, {value.Z}, {value.W}]");
+}
+
+// Texture parameters
+foreach (var (key, value) in material.TextureParams)
+{
+    Console.WriteLine($"Texture: {key} = {value}");
+}
+```
+
+## Converting to Valve Material Format
+
+Generate a vmat string directly:
+
+```csharp
+var materialExtract = new MaterialExtract(resource, fileLoader);
+var vmatString = materialExtract.ToValveMaterial();
+
+Console.WriteLine(vmatString);
+// Output:
+// Layer0
+// {
+//     shader "vr_complex.vfx"
+//     F_METALNESS_TEXTURE 1
+//     TextureColor "materials/metal/metal_01_color.png"
+//     ...
+// }
+
+File.WriteAllText("output.vmat", vmatString);
+```
+
+## Texture Unpacking
+
+Materials often pack multiple maps into texture channels. Extract them:
+
+```csharp
+using ValveResourceFormat.CompiledShader;
+
+var material = (Material)resource.DataBlock;
+var textureParam = material.TextureParams.First();
+
+var textureResource = fileLoader.LoadFileCompiled(textureParam.Value);
+var texture = (Texture)textureResource.DataBlock;
+
+// Get unpacking information
+var materialExtract = new MaterialExtract(resource, fileLoader);
+var unpackInfos = materialExtract.GetTextureUnpackInfos(
+    textureType: textureParam.Key,
+    texturePath: textureParam.Value + ".vtex",
+    texture: texture,
+    omitDefaults: true,
+    omitUniforms: true
+);
+
+foreach (var info in unpackInfos)
+{
+    Console.WriteLine($"Map: {info.TextureType}");
+    Console.WriteLine($"File: {info.FileName}");
+    Console.WriteLine($"Channel: {info.Channel}");
+}
+```
+
+## Output Texture Naming
+
+Generate appropriate texture file names:
+
+```csharp
+var compiledTexturePath = "materials/metal/metal_01_color_tga_abc123.vtex";
+
+// Generate output name
+var outputName = MaterialExtract.OutTextureName(
+    texturePath: compiledTexturePath,
+    keepOriginalExtension: false,
+    hdr: false,
+    desiredSuffix: null
+);
+
+Console.WriteLine(outputName);
+// Output: "materials/metal/metal_01_color.png"
+
+// With custom suffix
+var metalName = MaterialExtract.OutTextureName(
+    texturePath: compiledTexturePath,
+    keepOriginalExtension: false,
+    hdr: false,
+    desiredSuffix: "_metal"
+);
+
+Console.WriteLine(metalName);
+// Output: "materials/metal/metal_01_abc123_metal.png"
+```
+
+## Material Attributes
+
+Access material attributes:
+
+```csharp
+var material = (Material)resource.DataBlock;
+
+// Integer attributes
+foreach (var (key, value) in material.IntAttributes)
+{
+    Console.WriteLine($"Int Attribute: {key} = {value}");
+}
+
+// Float attributes
+foreach (var (key, value) in material.FloatAttributes)
+{
+    Console.WriteLine($"Float Attribute: {key} = {value}");
+}
+
+// Vector attributes
+foreach (var (key, value) in material.VectorAttributes)
+{
+    Console.WriteLine($"Vector Attribute: {key} = {value}");
+}
+
+// String attributes
+foreach (var (key, value) in material.StringAttributes)
+{
+    Console.WriteLine($"String Attribute: {key} = {value ?? "(null)"}");
+}
+```
+
+## Dynamic Expressions
+
+Materials can contain dynamic parameter expressions:
+
+```csharp
+var material = (Material)resource.DataBlock;
+
+if (material.DynamicExpressions.Count > 0)
+{
+    Console.WriteLine("Dynamic expressions:");
+    foreach (var (key, value) in material.DynamicExpressions)
+    {
+        Console.WriteLine($"  {key} = {value}");
+    }
+}
+```
+
+## Complete Extraction Example
+
+Extract a material with all its textures:
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.IO;
+using SteamDatabase.ValvePak;
+
+// Setup
+using var package = new Package();
+package.Read("pak01_dir.vpk");
+
+using var fileLoader = new GameFileLoader(package, "pak01_dir.vpk");
+
+// Load material
+var resource = fileLoader.LoadFile("materials/metal/metal_01.vmat_c");
+if (resource == null)
+{
+    Console.WriteLine("Material not found");
+    return;
+}
+
+// Extract
+var materialExtract = new MaterialExtract(resource, fileLoader);
+using var contentFile = materialExtract.ToContentFile();
+
+// Save main vmat file
+if (contentFile.Data != null)
+{
+    var outputPath = "extracted/metal_01.vmat";
+    Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
+    File.WriteAllBytes(outputPath, contentFile.Data);
+    Console.WriteLine($"Saved: {outputPath}");
+}
+
+// Save texture files
+foreach (var textureFile in contentFile.AdditionalFiles)
+{
+    foreach (var subFile in textureFile.SubFiles)
+    {
+        var outputPath = Path.Combine("extracted", subFile.FileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
+        
+        var data = subFile.Extract();
+        File.WriteAllBytes(outputPath, data);
+        Console.WriteLine($"Saved: {outputPath}");
+    }
+}
+
+Console.WriteLine("Material extraction complete!");
+```
+
+## Shader Data Provider
+
+For advanced material processing, use a shader data provider:
+
+```csharp
+using ValveResourceFormat.IO;
+
+var shaderDataProvider = new ShaderDataProvider(fileLoader);
+var materialExtract = new MaterialExtract(
+    material: (Material)resource.DataBlock,
+    editInfo: resource.EditInfo,
+    fileLoader: fileLoader,
+    shaderDataProvider: shaderDataProvider
+);
+
+// This provides better texture unpacking based on shader definitions
+var contentFile = materialExtract.ToContentFile();
+```
+
+## System Attributes
+
+Some attributes are system-level properties:
+
+```csharp
+var material = (Material)resource.DataBlock;
+
+// Check for physics surface properties
+if (material.StringAttributes.TryGetValue("physicssurfaceproperties", out var surfaceProp))
+{
+    Console.WriteLine($"Physics surface: {surfaceProp}");
+}
+
+// Check for world mapping
+if (material.FloatAttributes.TryGetValue("worldmappingwidth", out var width) &&
+    material.FloatAttributes.TryGetValue("worldmappingheight", out var height))
+{
+    Console.WriteLine($"World mapping: {width}x{height}");
+}
+```
+
+## Handling Packed Textures
+
+Many Source 2 materials pack multiple maps into a single texture:
+
+```csharp
+// Common packing schemes:
+// - RGB = Color, A = Translucency
+// - R = Metalness, G = Roughness, B = AmbientOcclusion
+// - RG = Normal (X,Y), B = unused, A = Alpha
+
+var materialExtract = new MaterialExtract(resource, fileLoader);
+var contentFile = materialExtract.ToContentFile();
+
+// The unpacking is automatic based on shader definitions
+foreach (var textureFile in contentFile.AdditionalFiles)
+{
+    Console.WriteLine($"Texture: {textureFile.FileName}");
+    foreach (var subFile in textureFile.SubFiles)
+    {
+        Console.WriteLine($"  - {subFile.FileName}");
+    }
+}
+```
+
+<Warning>
+Always provide an `IFileLoader` when creating `MaterialExtract` to ensure textures are properly resolved:
+```csharp
+// Good
+var extract = new MaterialExtract(resource, fileLoader);
+
+// Bad (textures won't be extracted)
+var extract = new MaterialExtract(resource, fileLoader: null);
+```
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Extracting Textures" icon="image" href="/guides/extracting-textures">
+    Learn more about texture extraction
+  </Card>
+  <Card title="Handling Shaders" icon="code" href="/guides/handling-shaders">
+    Decompile shader definitions
+  </Card>
+</CardGroup>

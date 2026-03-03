@@ -1,0 +1,297 @@
+---
+title: Custom File Loaders
+description: Implementing custom IFileLoader for resource loading
+---
+
+The `IFileLoader` interface provides a standardized way to load compiled Source 2 resources. This guide covers implementing custom loaders for specialized resource loading scenarios.
+
+## IFileLoader Interface
+
+The `IFileLoader` interface is defined in `ValveResourceFormat.IO` and provides three core methods:
+
+```csharp ValveResourceFormat/IO/IFileLoader.cs
+public interface IFileLoader
+{
+    /// <summary>
+    /// Loads a compiled resource file.
+    /// </summary>
+    /// <param name="file">Path to the resource file to load.</param>
+    /// <returns>Loaded resource, or null if not found.</returns>
+    Resource? LoadFile(string file);
+
+    /// <summary>
+    /// Same as LoadFile but appends "_c" to the end of the string.
+    /// </summary>
+    /// <param name="file">Path to the file to load (without _c suffix).</param>
+    /// <returns>Loaded compiled resource, or null if not found.</returns>
+    Resource? LoadFileCompiled(string file);
+
+    /// <summary>
+    /// Loads a shader collection by name.
+    /// </summary>
+    /// <param name="shaderName">Name of the shader to load.</param>
+    /// <returns>Loaded shader collection, or null if not found.</returns>
+    ShaderCollection? LoadShader(string shaderName);
+}
+```
+
+## GameFileLoader Implementation
+
+The built-in `GameFileLoader` class provides automatic resource discovery from VPK packages and disk:
+
+```csharp
+using ValveResourceFormat.IO;
+using SteamDatabase.ValvePak;
+
+// Initialize with a VPK package
+var package = new Package();
+package.Read("pak01_dir.vpk");
+
+using var loader = new GameFileLoader(package, "pak01_dir.vpk");
+
+// Load a compiled resource
+var material = loader.LoadFileCompiled("materials/example.vmat");
+
+// Load with explicit _c suffix
+var texture = loader.LoadFile("materials/example.vtex_c");
+
+// Load a shader
+var shader = loader.LoadShader("vr_complex.vfx");
+```
+
+### Automatic Path Resolution
+
+`GameFileLoader` automatically:
+- Discovers `gameinfo.gi` files by walking up the directory tree
+- Loads VPK packages found in search paths
+- Searches both VPK packages and loose files on disk
+- Resolves addon dependencies for workshop content
+
+```csharp GameFileLoader.cs:76-95
+public GameFileLoader(Package? currentPackage, string? currentFileName)
+{
+    CurrentPackage = currentPackage;
+    CurrentFileName = currentFileName;
+
+    // Find gameinfo.gi by walking up from the current file,
+    // preload vpks and add folders to search paths
+    if (CurrentFileName != null)
+    {
+        FindAndLoadSearchPaths();
+        FindAndLoadOfficialGameAddonPackage();
+    }
+}
+```
+
+## Custom Loader Implementation
+
+Implement `IFileLoader` for custom resource loading scenarios:
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.IO;
+using ValveResourceFormat.CompiledShader;
+
+public class CustomFileLoader : IFileLoader
+{
+    private readonly string basePath;
+    private readonly Dictionary<string, Resource> cache;
+
+    public CustomFileLoader(string basePath)
+    {
+        this.basePath = basePath;
+        this.cache = new Dictionary<string, Resource>();
+    }
+
+    public Resource? LoadFile(string file)
+    {
+        // Check cache first
+        if (cache.TryGetValue(file, out var cached))
+        {
+            return cached;
+        }
+
+        // Construct full path
+        var fullPath = Path.Combine(basePath, file);
+        
+        if (!File.Exists(fullPath))
+        {
+            Console.Error.WriteLine($"Failed to load \"{file}\"");
+            return null;
+        }
+
+        // Load and cache resource
+        var resource = new Resource();
+        resource.Read(fullPath);
+        cache[file] = resource;
+        
+        return resource;
+    }
+
+    public Resource? LoadFileCompiled(string file)
+    {
+        return LoadFile(file + GameFileLoader.CompiledFileSuffix);
+    }
+
+    public ShaderCollection? LoadShader(string shaderName)
+    {
+        // Custom shader loading logic
+        var collection = new ShaderCollection();
+        // ...
+        return collection;
+    }
+}
+```
+
+## Managing Search Paths
+
+`GameFileLoader` provides methods to customize search paths:
+
+```csharp
+using var loader = new GameFileLoader(null, null);
+
+// Add disk paths
+loader.AddDiskPathToSearch("/path/to/game/content");
+loader.AddDiskPathToSearch("/path/to/mod/content");
+
+// Add VPK packages
+var package = loader.AddPackageToSearch("pak01_dir.vpk");
+
+// Remove paths
+loader.RemoveDiskPathFromSearch("/path/to/content");
+loader.RemovePackageFromSearch(package);
+```
+
+## File Finding
+
+The `FindFile` method returns location information without loading:
+
+```csharp GameFileLoader.cs:137-150
+public virtual (string? PathOnDisk, Package? Package, PackageEntry? PackageEntry) 
+    FindFile(string file, bool logNotFound = true)
+{
+    // Check current package
+    var entry = CurrentPackage?.FindEntry(file);
+
+    if (entry != null)
+    {
+        return (null, CurrentPackage, entry);
+    }
+
+    // Check additional packages and disk...
+}
+```
+
+Example usage:
+
+```csharp
+var (pathOnDisk, package, entry) = loader.FindFile("materials/example.vmat_c");
+
+if (pathOnDisk != null)
+{
+    Console.WriteLine($"Found on disk: {pathOnDisk}");
+}
+else if (entry != null)
+{
+    Console.WriteLine($"Found in VPK: {package.FileName}");
+}
+```
+
+## Stream Access
+
+Get direct stream access to resources:
+
+```csharp
+using var loader = new GameFileLoader(package, fileName);
+using var stream = loader.GetFileStream("materials/example.vmat_c");
+
+if (stream != null)
+{
+    // Read raw bytes
+    var data = new byte[stream.Length];
+    stream.Read(data, 0, data.Length);
+}
+```
+
+## Surface Properties
+
+Load surface property tokens:
+
+```csharp
+loader.EnsureStringTokenGameKeys();
+```
+
+This loads and stores surface property string tokens from `surfaceproperties/surfaceproperties.vsurf_c`.
+
+## Best Practices
+
+### Resource Disposal
+
+Always dispose loaders and resources:
+
+```csharp
+using var loader = new GameFileLoader(package, fileName);
+using var resource = loader.LoadFile("model.vmdl_c");
+// Resources automatically disposed
+```
+
+### Caching
+
+Implement caching to avoid reloading:
+
+```csharp
+private readonly Dictionary<string, Resource> resourceCache = new();
+
+public Resource? LoadFileCached(string file)
+{
+    if (resourceCache.TryGetValue(file, out var cached))
+    {
+        return cached;
+    }
+
+    var resource = LoadFile(file);
+    if (resource != null)
+    {
+        resourceCache[file] = resource;
+    }
+    
+    return resource;
+}
+```
+
+### Error Handling
+
+Handle missing resources gracefully:
+
+```csharp
+var material = loader.LoadFileCompiled("materials/example.vmat");
+
+if (material == null)
+{
+    // Use fallback or skip rendering
+    return defaultMaterial;
+}
+```
+
+## Thread Safety
+
+`GameFileLoader` uses locks for shader caching:
+
+```csharp GameFileLoader.cs:333-346
+public ShaderCollection LoadShader(string shaderName)
+{
+    lock (CachedShadersLock)
+    {
+        if (CachedShaders.TryGetValue(shaderName, out var shader))
+        {
+            return shader;
+        }
+
+        shader = LoadShaderFromDisk(shaderName);
+        CachedShaders.Add(shaderName, shader);
+        return shader;
+    }
+}
+```
+
+For custom implementations, ensure thread safety when caching resources.

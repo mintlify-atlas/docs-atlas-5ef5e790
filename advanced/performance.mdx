@@ -1,0 +1,447 @@
+---
+title: Performance Optimization
+description: Tips and techniques for optimizing ValveResourceFormat performance
+---
+
+Optimizing resource loading and processing is critical for applications handling large Source 2 datasets. This guide covers performance best practices.
+
+## Resource Loading
+
+### Stream Management
+
+Keep streams open only when necessary:
+
+```csharp Resource.cs:178-179
+public void Read(Stream input, bool verifyFileSize = true, bool leaveOpen = false)
+{
+    Reader = new BinaryReader(input, Encoding.UTF8, leaveOpen);
+    // ...
+}
+```
+
+**Best Practice:**
+
+```csharp
+// Bad: Creates multiple streams
+foreach (var file in files)
+{
+    var resource = new Resource();
+    resource.Read(file);
+    ProcessResource(resource);
+    resource.Dispose();
+}
+
+// Good: Reuse loader with managed streams
+using var loader = new GameFileLoader(package, fileName);
+foreach (var file in files)
+{
+    using var resource = loader.LoadFile(file);
+    if (resource != null)
+    {
+        ProcessResource(resource);
+    }
+}
+```
+
+### VPK Package Optimization
+
+Optimize VPK reading for binary search:
+
+```csharp GameFileLoader.cs:501-503
+var package = new Package();
+package.OptimizeEntriesForBinarySearch(StringComparison.OrdinalIgnoreCase);
+package.Read(searchPath);
+```
+
+This enables O(log n) file lookups instead of O(n).
+
+### Memory-Mapped Files
+
+Use memory-mapped streams for large VPKs:
+
+```csharp GameFileLoader.cs:854-860
+public static Stream GetPackageEntryStream(Package package, PackageEntry entry)
+{
+    lock (package)
+    {
+        return package.GetMemoryMappedStreamIfPossible(entry);
+    }
+}
+```
+
+Memory-mapped files reduce memory usage and improve performance for large files.
+
+## Compression
+
+### Block Compression
+
+Fast decompression is built-in for Valve's custom format:
+
+```csharp BlockCompress.cs:35-44
+public static void FastDecompress(CompressionInfo info, BinaryReader reader, Span<byte> result)
+{
+    ArgumentOutOfRangeException.ThrowIfLessThan(result.Length, info.Size);
+
+    if (!info.IsCompressed)
+    {
+        reader.Read(result[0..info.Size]);
+        return;
+    }
+    
+    // Fast LZ-style decompression...
+}
+```
+
+### LZ4 Compression
+
+LZ4 is widely used in Source 2 for fast decompression:
+
+```csharp BinaryKV3.cs:159-179
+private static void DecompressLZ4(BinaryReader reader, Span<byte> output, int compressedSize)
+{
+    var inputBuf = ArrayPool<byte>.Shared.Rent(compressedSize);
+
+    try
+    {
+        var input = inputBuf.AsSpan(0, compressedSize);
+        reader.Read(input);
+
+        var written = LZ4Codec.Decode(input, output);
+
+        if (written != output.Length)
+        {
+            throw new InvalidDataException(
+                $"Failed to decompress LZ4 (expected {output.Length} bytes, got {written})"
+            );
+        }
+    }
+    finally
+    {
+        ArrayPool<byte>.Shared.Return(inputBuf);
+    }
+}
+```
+
+**Performance Tips:**
+- Use `ArrayPool<byte>.Shared` to reduce allocations
+- Decompress directly to target spans when possible
+- Always return pooled buffers in `finally` blocks
+
+## Memory Management
+
+### ArrayPool Usage
+
+Always use `ArrayPool` for temporary buffers:
+
+```csharp
+// Bad: Allocates new arrays
+var buffer = new byte[1024];
+ProcessData(buffer);
+
+// Good: Use ArrayPool
+var buffer = ArrayPool<byte>.Shared.Rent(1024);
+try
+{
+    var span = buffer.AsSpan(0, 1024);
+    ProcessData(span);
+}
+finally
+{
+    ArrayPool<byte>.Shared.Return(buffer);
+}
+```
+
+### Resource Disposal
+
+Properly dispose resources to prevent leaks:
+
+```csharp Resource.cs:137-153
+protected virtual void Dispose(bool disposing)
+{
+    if (disposing)
+    {
+        if (FileStream != null)
+        {
+            FileStream.Dispose();
+            FileStream = null;
+        }
+
+        if (Reader != null)
+        {
+            Reader.Dispose();
+            Reader = null;
+        }
+    }
+}
+```
+
+**Best Practice:**
+
+```csharp
+// Always use 'using' statements
+using var resource = new Resource();
+resource.Read(fileName);
+
+// Or explicit disposal
+var resource = new Resource();
+try
+{
+    resource.Read(fileName);
+}
+finally
+{
+    resource.Dispose();
+}
+```
+
+## Caching Strategies
+
+### Shader Caching
+
+`GameFileLoader` caches loaded shaders:
+
+```csharp GameFileLoader.cs:47-48
+private readonly Dictionary<string, ShaderCollection> CachedShaders = [];
+private readonly Lock CachedShadersLock = new();
+```
+
+Implement similar caching for frequently accessed resources:
+
+```csharp
+public class ResourceCache
+{
+    private readonly Dictionary<string, Resource> cache = new();
+    private readonly Lock cacheLock = new();
+    private readonly int maxCacheSize = 1000;
+
+    public Resource? GetOrLoad(string path, IFileLoader loader)
+    {
+        lock (cacheLock)
+        {
+            if (cache.TryGetValue(path, out var cached))
+            {
+                return cached;
+            }
+
+            var resource = loader.LoadFile(path);
+            if (resource != null && cache.Count < maxCacheSize)
+            {
+                cache[path] = resource;
+            }
+
+            return resource;
+        }
+    }
+
+    public void Clear()
+    {
+        lock (cacheLock)
+        {
+            foreach (var resource in cache.Values)
+            {
+                resource.Dispose();
+            }
+            cache.Clear();
+        }
+    }
+}
+```
+
+### LRU Cache Implementation
+
+For memory-constrained environments:
+
+```csharp
+public class LRUResourceCache
+{
+    private readonly int capacity;
+    private readonly Dictionary<string, LinkedListNode<CacheEntry>> cache;
+    private readonly LinkedList<CacheEntry> lruList;
+
+    private class CacheEntry
+    {
+        public string Key { get; set; }
+        public Resource Value { get; set; }
+    }
+
+    public LRUResourceCache(int capacity)
+    {
+        this.capacity = capacity;
+        cache = new Dictionary<string, LinkedListNode<CacheEntry>>(capacity);
+        lruList = new LinkedList<CacheEntry>();
+    }
+
+    public Resource? Get(string key)
+    {
+        if (cache.TryGetValue(key, out var node))
+        {
+            // Move to front (most recently used)
+            lruList.Remove(node);
+            lruList.AddFirst(node);
+            return node.Value.Value;
+        }
+        return null;
+    }
+
+    public void Put(string key, Resource value)
+    {
+        if (cache.TryGetValue(key, out var node))
+        {
+            lruList.Remove(node);
+            node.Value.Value.Dispose();
+        }
+        else if (cache.Count >= capacity)
+        {
+            // Remove least recently used
+            var last = lruList.Last;
+            lruList.RemoveLast();
+            cache.Remove(last.Value.Key);
+            last.Value.Value.Dispose();
+        }
+
+        var entry = new CacheEntry { Key = key, Value = value };
+        var newNode = new LinkedListNode<CacheEntry>(entry);
+        lruList.AddFirst(newNode);
+        cache[key] = newNode;
+    }
+}
+```
+
+## Parallel Processing
+
+### Process Multiple Files
+
+Use parallel processing for independent resources:
+
+```csharp
+var files = new[] { "model1.vmdl_c", "model2.vmdl_c", "model3.vmdl_c" };
+
+var results = files.AsParallel()
+    .Select(file =>
+    {
+        using var loader = new GameFileLoader(package, file);
+        return loader.LoadFile(file);
+    })
+    .Where(r => r != null)
+    .ToList();
+
+foreach (var resource in results)
+{
+    ProcessResource(resource);
+    resource.Dispose();
+}
+```
+
+**Warning:** Each parallel task needs its own loader instance.
+
+## Lazy Loading
+
+### Defer Block Reading
+
+Resource blocks are read lazily in some cases:
+
+```csharp Resource.cs:294-300
+foreach (var block in Blocks)
+{
+    if (block.Type is not BlockType.REDI and not BlockType.RED2 and not BlockType.NTRO)
+    {
+        block.Read(Reader);
+    }
+}
+```
+
+Implement lazy loading for your resources:
+
+```csharp
+public class LazyResource
+{
+    private readonly string filePath;
+    private Resource? resource;
+
+    public LazyResource(string filePath)
+    {
+        this.filePath = filePath;
+    }
+
+    public Resource Value
+    {
+        get
+        {
+            if (resource == null)
+            {
+                resource = new Resource();
+                resource.Read(filePath);
+            }
+            return resource;
+        }
+    }
+}
+```
+
+## Profiling
+
+### Measure Loading Time
+
+```csharp
+using System.Diagnostics;
+
+var stopwatch = Stopwatch.StartNew();
+
+using var resource = loader.LoadFile("large_file.vmdl_c");
+
+stopwatch.Stop();
+Console.WriteLine($"Loaded in {stopwatch.ElapsedMilliseconds}ms");
+```
+
+### Memory Profiling
+
+```csharp
+var before = GC.GetTotalMemory(false);
+
+using (var resource = loader.LoadFile("file.vmdl_c"))
+{
+    var after = GC.GetTotalMemory(false);
+    Console.WriteLine($"Memory used: {(after - before) / 1024 / 1024}MB");
+}
+
+GC.Collect();
+var final = GC.GetTotalMemory(true);
+Console.WriteLine($"Memory after GC: {(final - before) / 1024 / 1024}MB");
+```
+
+## Benchmarking Tips
+
+1. **Warm up**: Run operations once before measuring
+2. **Multiple iterations**: Average over multiple runs
+3. **Realistic data**: Test with production-sized files
+4. **Memory pressure**: Test under various memory conditions
+5. **Concurrency**: Test parallel vs sequential loading
+
+```csharp
+public static class Benchmark
+{
+    public static TimeSpan Measure(Action action, int iterations = 100)
+    {
+        // Warm up
+        action();
+        GC.Collect();
+
+        var stopwatch = Stopwatch.StartNew();
+        for (int i = 0; i < iterations; i++)
+        {
+            action();
+        }
+        stopwatch.Stop();
+
+        return TimeSpan.FromTicks(stopwatch.ElapsedTicks / iterations);
+    }
+}
+
+// Usage
+var avgTime = Benchmark.Measure(() =>
+{
+    using var resource = loader.LoadFile("test.vmdl_c");
+});
+
+Console.WriteLine($"Average load time: {avgTime.TotalMilliseconds}ms");
+```

@@ -1,0 +1,179 @@
+---
+title: Sound
+description: API reference for the Sound resource type class
+---
+
+The `Sound` class represents a sound resource containing audio data and metadata.
+
+## Properties
+
+<ResponseField name="SoundType" type="AudioFileType">
+  Gets the audio file type (AAC, WAV, or MP3).
+</ResponseField>
+
+<ResponseField name="SampleRate" type="uint">
+  Gets the samples per second.
+</ResponseField>
+
+<ResponseField name="Bits" type="uint">
+  Gets the bit size.
+</ResponseField>
+
+<ResponseField name="Channels" type="uint">
+  Gets the number of channels. 1 for mono, 2 for stereo.
+</ResponseField>
+
+<ResponseField name="AudioFormat" type="WaveAudioFormat">
+  Gets the bitstream encoding format.
+</ResponseField>
+
+<ResponseField name="SampleSize" type="uint">
+  Gets the size of each audio sample in bytes.
+</ResponseField>
+
+<ResponseField name="SampleCount" type="uint">
+  Gets the total number of audio samples.
+</ResponseField>
+
+<ResponseField name="LoopStart" type="int">
+  Gets the loop start position in samples.
+</ResponseField>
+
+<ResponseField name="LoopEnd" type="int">
+  Gets the loop end position in samples.
+</ResponseField>
+
+<ResponseField name="Duration" type="float">
+  Gets the duration of the sound in seconds.
+</ResponseField>
+
+<ResponseField name="Sentence" type="Sentence?">
+  Gets the sentence data containing phoneme and emphasis information.
+</ResponseField>
+
+<ResponseField name="Header" type="byte[]">
+  Gets the WAVE format header data for ADPCM audio.
+</ResponseField>
+
+<ResponseField name="StreamingDataSize" type="uint">
+  Gets the size of the streaming audio data in bytes.
+</ResponseField>
+
+## Methods
+
+### GetSound
+
+Returns a fully playable sound data. In case of WAV files, header is automatically generated as Valve removes it when compiling.
+
+<ResponseField name="returns" type="byte[]">
+  Byte array containing sound data.
+</ResponseField>
+
+### GetSoundStream
+
+Returns a fully playable sound data as a stream. In case of WAV files, header is automatically generated as Valve removes it when compiling.
+
+<ResponseField name="returns" type="MemoryStream">
+  Memory stream containing sound data.
+</ResponseField>
+
+### ConstructFromCtrl
+
+Constructs sound data from the control block.
+
+<ResponseField name="returns" type="bool">
+  True if successfully constructed from control block.
+</ResponseField>
+
+## Enumerations
+
+### AudioFileType
+
+Specifies the audio file container type.
+
+- `AAC` - AAC container
+- `WAV` - WAVE container
+- `MP3` - MP3 container
+
+### AudioFormatV4
+
+Specifies the audio encoding format for version 4 sound files.
+
+- `PCM16` - 16-bit PCM
+- `PCM8` - 8-bit PCM
+- `MP3` - MP3 encoding
+- `ADPCM` - ADPCM encoding
+
+### WaveAudioFormat
+
+Specifies the WAVE audio encoding format.
+
+- `Unknown` - Unknown format
+- `PCM` - PCM format
+- `ADPCM` - ADPCM format
+
+## Structures
+
+### Sentence
+
+Represents a sentence with phoneme and emphasis data for voice playback.
+
+<ResponseField name="RunTimePhonemes" type="PhonemeTag[]">
+  Gets the phoneme tags for lip-sync.
+</ResponseField>
+
+### PhonemeTag
+
+Represents a phoneme timing tag for lip-sync animation.
+
+<ResponseField name="StartTime" type="float">
+  Gets the start time of the phoneme.
+</ResponseField>
+
+<ResponseField name="EndTime" type="float">
+  Gets the end time of the phoneme.
+</ResponseField>
+
+<ResponseField name="PhonemeCode" type="ushort">
+  Gets the phoneme identifier code.
+</ResponseField>
+
+## Usage Example
+
+```csharp
+var resource = new Resource();
+var sound = resource.DataBlock as Sound;
+
+if (sound != null)
+{
+    Console.WriteLine($"Sound Type: {sound.SoundType}");
+    Console.WriteLine($"Sample Rate: {sound.SampleRate} Hz");
+    Console.WriteLine($"Channels: {sound.Channels}");
+    Console.WriteLine($"Duration: {sound.Duration} seconds");
+    Console.WriteLine($"Format: {sound.AudioFormat}");
+    
+    // Get the playable audio data
+    var audioData = sound.GetSound();
+    Console.WriteLine($"Audio data size: {audioData.Length} bytes");
+    
+    // Or get as a stream
+    using var audioStream = sound.GetSoundStream();
+    File.WriteAllBytes("output.wav", audioStream.ToArray());
+    
+    // Check for phoneme data (for lip-sync)
+    if (sound.Sentence != null)
+    {
+        Console.WriteLine($"Phonemes: {sound.Sentence.RunTimePhonemes.Length}");
+        foreach (var phoneme in sound.Sentence.RunTimePhonemes)
+        {
+            Console.WriteLine($"  {phoneme.StartTime:F2}s - {phoneme.EndTime:F2}s: {phoneme.PhonemeCode}");
+        }
+    }
+    
+    // Check loop points
+    if (sound.LoopStart >= 0 && sound.LoopEnd > sound.LoopStart)
+    {
+        Console.WriteLine($"Loop: {sound.LoopStart} to {sound.LoopEnd}");
+    }
+}
+```

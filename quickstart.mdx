@@ -1,80 +1,270 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Get started with ValveResourceFormat in minutes
 ---
 
-## Get started in three steps
+Get up and running with ValveResourceFormat by following this quick guide. You'll learn how to install the library, open a VPK archive, read a resource file, and export it.
 
-Get your documentation site running locally and make your first customization.
+## Installation
 
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+<Steps>
+  <Step title="Install the package">
+    Install ValveResourceFormat via NuGet:
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    <CodeGroup>
+    ```bash .NET CLI
+    dotnet add package ValveResourceFormat
+    dotnet add package ValvePak
+    ```
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    ```bash Package Manager
+    Install-Package ValveResourceFormat
+    Install-Package ValvePak
+    ```
+    </CodeGroup>
+  </Step>
+  
+  <Step title="Add using statements">
+    Add the required namespaces to your C# file:
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ```csharp
+    using ValveResourceFormat;
+    using ValveResourceFormat.ResourceTypes;
+    using ValveResourceFormat.IO;
+    using SteamDatabase.ValvePak;
+    ```
+  </Step>
+</Steps>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Basic Example
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+Here's a complete example showing how to open a VPK archive, read a texture, and export it to PNG:
 
-### Step 3: Go live
+<Steps>
+  <Step title="Open a VPK package">
+    ```csharp
+    // Open the VPK archive
+    using var package = new Package();
+    package.Read("pak01_dir.vpk");
+    
+    // Find a texture file
+    var entry = package.FindEntry("materials/models/props/debug.vtex_c");
+    if (entry == null)
+    {
+        Console.WriteLine("File not found");
+        return;
+    }
+    
+    // Read the file data
+    package.ReadEntry(entry, out var fileData);
+    ```
+  </Step>
+  
+  <Step title="Parse the resource file">
+    ```csharp
+    // Create and read the resource
+    using var resource = new Resource();
+    resource.FileName = entry.GetFullPath();
+    
+    using var stream = new MemoryStream(fileData);
+    resource.Read(stream);
+    
+    // Verify it's a texture
+    if (resource.ResourceType != ResourceType.Texture)
+    {
+        Console.WriteLine("Not a texture file");
+        return;
+    }
+    ```
+  </Step>
+  
+  <Step title="Export to PNG">
+    ```csharp
+    // Get the texture data
+    var texture = (Texture)resource.DataBlock;
+    
+    // Generate a bitmap
+    using var bitmap = texture.GenerateBitmap();
+    
+    // Convert to PNG
+    var png = TextureExtract.ToPngImage(bitmap);
+    
+    // Save to disk
+    File.WriteAllBytes("output.png", png);
+    Console.WriteLine("Texture exported successfully!");
+    ```
+  </Step>
+</Steps>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+## Working with Different Resource Types
 
-## Next steps
+ValveResourceFormat supports many resource types. Here are quick examples for common ones:
 
-Now that you have your docs running, explore these key features:
+<Tabs>
+  <Tab title="Models">
+    ```csharp
+    using var resource = new Resource();
+    resource.Read("character.vmdl_c");
+    
+    if (resource.ResourceType == ResourceType.Model)
+    {
+        var model = (Model)resource.DataBlock;
+        Console.WriteLine($"Model: {model.Name}");
+        Console.WriteLine($"Meshes: {model.GetEmbeddedMeshes().Count()}");
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Materials">
+    ```csharp
+    using var resource = new Resource();
+    resource.Read("metal.vmat_c");
+    
+    if (resource.ResourceType == ResourceType.Material)
+    {
+        var material = (Material)resource.DataBlock;
+        Console.WriteLine($"Shader: {material.ShaderName}");
+        
+        foreach (var texture in material.TextureParams)
+        {
+            Console.WriteLine($"{texture.Key}: {texture.Value}");
+        }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Worlds">
+    ```csharp
+    using var resource = new Resource();
+    resource.Read("de_dust2.vwrld_c");
+    
+    if (resource.ResourceType == ResourceType.World)
+    {
+        var world = (World)resource.DataBlock;
+        var entityLumps = world.GetEntityLumpNames();
+        Console.WriteLine($"Entity lumps: {string.Join(", ", entityLumps)}");
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Sounds">
+    ```csharp
+    using var resource = new Resource();
+    resource.Read("music.vsnd_c");
+    
+    if (resource.ResourceType == ResourceType.Sound)
+    {
+        var sound = (Sound)resource.DataBlock;
+        Console.WriteLine($"Format: {sound.Type}");
+        Console.WriteLine($"Sample Rate: {sound.SampleRate}");
+        Console.WriteLine($"Channels: {sound.ChannelCount}");
+        
+        var audioData = sound.GetSound();
+        File.WriteAllBytes("output.wav", audioData);
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Using FileExtract Helper
+
+For automatic format detection and extraction, use the `FileExtract` helper:
+
+```csharp
+using var resource = new Resource();
+resource.Read("some_file.vtex_c");
+
+// Automatically extract based on file type
+var contentFile = FileExtract.Extract(resource);
+
+// Write to disk
+using var output = File.OpenWrite("output" + contentFile.Extension);
+output.Write(contentFile.Data);
+```
+
+## Next Steps
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Core Concepts" icon="book" href="/concepts/resource-files">
+    Learn about resource file structure and blocks
+  </Card>
+  
+  <Card title="Reading Resources" icon="file" href="/guides/reading-resources">
+    In-depth guide on reading and parsing resources
+  </Card>
+  
+  <Card title="Extracting Textures" icon="image" href="/guides/extracting-textures">
+    Advanced texture extraction and manipulation
+  </Card>
+  
+  <Card title="Exporting Models" icon="cube" href="/guides/exporting-models">
+    Export models to glTF format
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Common Patterns
+
+### Error Handling
+
+```csharp
+try
+{
+    using var resource = new Resource();
+    resource.Read(filePath);
+    
+    // Process resource...
+}
+catch (InvalidDataException ex)
+{
+    Console.WriteLine($"Invalid resource file: {ex.Message}");
+}
+catch (IOException ex)
+{
+    Console.WriteLine($"File error: {ex.Message}");
+}
+```
+
+### Batch Processing
+
+```csharp
+var files = Directory.GetFiles(".", "*.vtex_c");
+
+foreach (var file in files)
+{
+    using var resource = new Resource();
+    resource.Read(file);
+    
+    if (resource.ResourceType == ResourceType.Texture)
+    {
+        var texture = (Texture)resource.DataBlock;
+        using var bitmap = texture.GenerateBitmap();
+        var png = TextureExtract.ToPngImage(bitmap);
+        
+        var outputName = Path.GetFileNameWithoutExtension(file) + ".png";
+        File.WriteAllBytes(outputName, png);
+    }
+}
+```
+
+### Resource Disposal
+
+Always dispose of resources properly:
+
+```csharp
+// Using statement (recommended)
+using var resource = new Resource();
+resource.Read(filePath);
+
+// Manual disposal
+Resource resource = null;
+try
+{
+    resource = new Resource();
+    resource.Read(filePath);
+    // Use resource...
+}
+finally
+{
+    resource?.Dispose();
+}
+```

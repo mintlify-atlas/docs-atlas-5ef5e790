@@ -1,0 +1,309 @@
+---
+title: TextureExtract
+description: Extract Source 2 textures to PNG, EXR, or vtex format
+---
+
+The `TextureExtract` class handles extraction of texture resources to various image formats including PNG, EXR (for HDR textures), and Valve texture (vtex) configuration files.
+
+## Constructor
+
+```csharp
+public TextureExtract(Resource resource)
+```
+
+<ParamField path="resource" type="Resource" required>
+  The texture resource to extract. Must contain a Texture data block.
+</ParamField>
+
+## Properties
+
+<ParamField path="DecodeFlags" type="TextureDecoders.TextureCodec">
+  Decode flags for texture extraction. Default: `TextureCodec.Auto`
+  
+  Controls how the texture is decoded and processed during extraction.
+</ParamField>
+
+<ParamField path="LatLongCombineCubemap" type="bool">
+  Whether to combine cubemap faces into a single latlong image. Default: `true`
+  
+  When enabled, HDR cubemaps are exported as a single equirectangular projection image.
+</ParamField>
+
+<ParamField path="IgnoreVtexFile" type="bool">
+  Should the vtex file be ignored. Default: `true` for child resources, `false` otherwise.
+  
+  When true, only image files are extracted without the vtex configuration.
+</ParamField>
+
+<ParamField path="ExportExr" type="bool" readOnly>
+  Gets whether the texture should be exported as EXR format.
+  
+  Returns true for HDR textures unless ForceLDR decode flag is set.
+</ParamField>
+
+<ParamField path="ImageOutputExtension" type="string" readOnly>
+  Gets the output file extension for the texture (".exr" or ".png").
+</ParamField>
+
+## Methods
+
+### ToContentFile
+
+```csharp
+public ContentFile ToContentFile()
+```
+
+Converts the texture to a content file with associated images.
+
+**Returns:** `ContentFile` - Content file containing vtex data and image subfiles.
+
+**Behavior:**
+- For standard textures: Creates vtex file with single image subfile
+- For sprite sheets: Creates vtex file, MKS script, and individual sprite images
+- For cubemaps: Creates separate images for each face (or combined latlong for HDR)
+- For texture arrays: Creates separate images for each layer
+
+### ToMaterialMaps
+
+```csharp
+public ContentFile ToMaterialMaps(
+    IEnumerable<MaterialExtract.UnpackInfo> mapsToUnpack
+)
+```
+
+Extracts texture to material map files by unpacking channels.
+
+<ParamField path="mapsToUnpack" type="IEnumerable<MaterialExtract.UnpackInfo>" required>
+  Information about which channels to unpack into separate images.
+</ParamField>
+
+**Returns:** `ContentFile` - Content file with unpacked channel images as subfiles.
+
+**Use Case:** Separating packed texture channels (e.g., roughness in R, metallic in G, AO in B) into individual material maps.
+
+### ToValveTexture
+
+```csharp
+public string ToValveTexture()
+```
+
+Converts the texture to a Valve texture (vtex) configuration string.
+
+**Returns:** `string` - A vtex configuration string in KeyValues2 format.
+
+## Static Methods
+
+### GetImageOutputExtension
+
+```csharp
+public static string GetImageOutputExtension(Texture texture)
+```
+
+Gets the appropriate image output extension for a texture.
+
+<ParamField path="texture" type="Texture" required>
+  The texture to check.
+</ParamField>
+
+**Returns:** `string` - File extension: "exr", "jpeg", "webp", or "png".
+
+### ToPngImage
+
+```csharp
+public static byte[] ToPngImage(SKBitmap bitmap)
+```
+
+Converts a bitmap to PNG image bytes.
+
+### SubsetToPngImage
+
+```csharp
+public static byte[] SubsetToPngImage(SKBitmap bitmap, SKRectI spriteRect)
+```
+
+Converts a subset of a bitmap to PNG image bytes.
+
+### ToPngImageChannels
+
+```csharp
+public static byte[] ToPngImageChannels(
+    SKBitmap bitmap,
+    ChannelMapping channel
+)
+```
+
+Converts specific channels of a bitmap to PNG image bytes.
+
+<ParamField path="bitmap" type="SKBitmap" required>
+  The source bitmap.
+</ParamField>
+
+<ParamField path="channel" type="ChannelMapping" required>
+  Which channels to extract (e.g., R, RG, RGB, RGBA, or swizzled channels).
+</ParamField>
+
+**Behavior:**
+- Single channel (R/G/B/A): Exports as grayscale image
+- RGB/RG: Exports with alpha channel removed
+- RGBA: Exports as-is
+- Swizzled (e.g., AG for normal maps): Remaps channels to RGBA
+
+### ToExrImage
+
+```csharp
+public static byte[] ToExrImage(SKBitmap bitmap)
+public static byte[] ToExrImage(SKPixmap pixels)
+```
+
+Converts a bitmap or pixmap to EXR image bytes.
+
+### CopyChannel
+
+```csharp
+public static void CopyChannel(
+    SKPixmap srcPixels,
+    ChannelMapping srcChannel,
+    SKPixmap dstPixels,
+    ChannelMapping dstChannel
+)
+```
+
+Copies a single channel from source pixmap to destination pixmap.
+
+### CreateLatLongFromCubemapFaces
+
+```csharp
+public static SKBitmap CreateLatLongFromCubemapFaces(SKPixmap[] faces)
+```
+
+Creates a latlong layout bitmap from 6 projected cubemap faces.
+
+<ParamField path="faces" type="SKPixmap[]" required>
+  Array of 6 cubemap face pixmaps in order: right, left, back, front, up, down.
+</ParamField>
+
+**Returns:** `SKBitmap` - Equirectangular projection of the cubemap.
+
+**Requirements:**
+- Faces must be HDR format (RgbaF16 or RgbaF32)
+- All faces must have the same dimensions
+
+## Helper Classes
+
+### TextureContentFile
+
+Extends `ContentFile` with bitmap data for textures.
+
+<ParamField path="Bitmap" type="SKBitmap" required>
+  The bitmap data associated with this content file.
+</ParamField>
+
+#### Methods
+
+<ParamField path="AddImageSubFile" type="void">
+  Adds an image sub-file with a custom extraction function.
+  
+  **Parameters:**
+  - `fileName` (string) - The sub-file name
+  - `imageExtractFunction` (Func&lt;SKBitmap, byte[]&gt;) - Function to extract image from bitmap
+</ParamField>
+
+### TexturePacker
+
+Packs multiple texture masks into a single texture by combining channels.
+
+<ParamField path="DefaultColor" type="SKColor">
+  Default color for unpacked channels. Default: Black
+</ParamField>
+
+<ParamField path="Bitmap" type="SKBitmap?" readOnly>
+  Gets the packed bitmap.
+</ParamField>
+
+#### Methods
+
+<ParamField path="Collect" type="void">
+  Collects a channel from source pixmap into the packed texture.
+  
+  **Parameters:**
+  - `srcPixels` (SKPixmap) - Source pixel data
+  - `srcChannel` (ChannelMapping) - Source channel to read
+  - `dstChannel` (ChannelMapping) - Destination channel to write
+  - `fileName` (string) - File name for error reporting
+  
+  Automatically handles resolution differences by scaling.
+</ParamField>
+
+## Usage Examples
+
+### Basic Texture Extraction
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.IO;
+
+var resource = new Resource();
+resource.Read("materials/example.vtex_c");
+
+var extractor = new TextureExtract(resource);
+var contentFile = extractor.ToContentFile();
+
+// Write vtex file
+if (contentFile.Data != null)
+{
+    File.WriteAllBytes("example.vtex", contentFile.Data);
+}
+
+// Write image files
+foreach (var subFile in contentFile.SubFiles)
+{
+    var imageData = subFile.Extract?.Invoke();
+    if (imageData != null)
+    {
+        File.WriteAllBytes(subFile.FileName, imageData);
+    }
+}
+```
+
+### Extract with Custom Decode Flags
+
+```csharp
+var extractor = new TextureExtract(resource)
+{
+    DecodeFlags = TextureDecoders.TextureCodec.ForceLDR,
+    LatLongCombineCubemap = false
+};
+var contentFile = extractor.ToContentFile();
+```
+
+### Channel Unpacking for Materials
+
+```csharp
+using ValveResourceFormat.CompiledShader;
+
+var unpackInfos = new[]
+{
+    new MaterialExtract.UnpackInfo
+    {
+        TextureType = "Roughness",
+        FileName = "material_rough.png",
+        Channel = ChannelMapping.R
+    },
+    new MaterialExtract.UnpackInfo
+    {
+        TextureType = "Metalness",
+        FileName = "material_metal.png",
+        Channel = ChannelMapping.G
+    }
+};
+
+var contentFile = extractor.ToMaterialMaps(unpackInfos);
+```
+
+## Notes
+
+- HDR textures are automatically exported as EXR format
+- Sprite sheets are decomposed into individual frames with MKS metadata
+- Cubemaps can be exported as 6 separate faces or combined latlong projection
+- The class handles both standard textures and special types (raw JPEG/WebP, sprite sheets)
+- Child resources (embedded textures) skip vtex file generation by default

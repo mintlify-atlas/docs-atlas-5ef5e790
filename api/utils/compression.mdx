@@ -1,0 +1,320 @@
+---
+title: Compression Utilities
+description: Block compression and decompression utilities for Source 2 resources
+---
+
+The compression utilities in ValveResourceFormat provide methods for decompressing block-compressed data and mesh optimizer buffers used throughout Source 2 resources.
+
+## Overview
+
+Source 2 uses several compression schemes:
+
+- **Block Compression**: Simple LZ-style compression for general data
+- **MeshOptimizer**: Specialized compression for vertex and index buffers
+- **LZ4**: Fast compression for KV3 data
+- **ZSTD**: High compression ratio for KV3 data
+
+## BlockCompress
+
+Provides fast decompression of block-compressed data.
+
+### Namespace
+
+```csharp
+using ValveResourceFormat.Compression;
+```
+
+### CompressionInfo
+
+Stores compression state and size information:
+
+```csharp
+public record struct CompressionInfo(bool IsCompressed, int Size);
+```
+
+### Getting Decompressed Size
+
+```csharp
+var reader = new BinaryReader(stream);
+var info = BlockCompress.GetDecompressedSize(reader);
+
+if (info.IsCompressed)
+{
+    Console.WriteLine($"Data is compressed, decompressed size: {info.Size} bytes");
+}
+else
+{
+    Console.WriteLine($"Data is uncompressed, size: {info.Size} bytes");
+}
+```
+
+### Fast Decompression
+
+```csharp
+var reader = new BinaryReader(stream);
+var info = BlockCompress.GetDecompressedSize(reader);
+var result = new byte[info.Size];
+
+BlockCompress.FastDecompress(info, reader, result);
+
+// result now contains decompressed data
+```
+
+## Complete Example
+
+```csharp
+using ValveResourceFormat.Compression;
+
+public byte[] DecompressBlock(Stream stream)
+{
+    using var reader = new BinaryReader(stream);
+    
+    // Read compression info
+    var info = BlockCompress.GetDecompressedSize(reader);
+    
+    // Allocate output buffer
+    var result = new byte[info.Size];
+    
+    // Decompress data
+    BlockCompress.FastDecompress(info, reader, result);
+    
+    return result;
+}
+```
+
+## Compression Detection
+
+Valve uses the high bit (0x80000000) of the size field to indicate uncompressed data:
+
+```csharp
+var size = reader.ReadUInt32();
+var isCompressed = size <= int.MaxValue;
+var actualSize = (int)(size & 0x7FFFFFFF);
+```
+
+## MeshOptimizer Vertex Decoder
+
+Decodes vertex buffers compressed with meshoptimizer.
+
+### Namespace
+
+```csharp
+using ValveResourceFormat.Compression;
+```
+
+### Decoding Vertex Buffers
+
+```csharp
+var vertexCount = 1024;
+var vertexSize = 32;  // bytes per vertex
+var compressedData = ReadCompressedVertexData();
+
+var decodedVertices = MeshOptimizerVertexDecoder.DecodeVertexBuffer(
+    vertexCount,
+    vertexSize,
+    compressedData,
+    useSimd: true  // Enable SIMD acceleration if available
+);
+
+// decodedVertices contains uncompressed vertex data
+```
+
+### Parameters
+
+- **vertexCount**: Number of vertices to decode
+- **vertexSize**: Size of each vertex in bytes (must be multiple of 4)
+- **buffer**: Compressed vertex buffer data
+- **useSimd**: Enable SIMD acceleration (default: true)
+
+### Requirements
+
+```csharp
+// Vertex size must be a multiple of 4 and between 1-256 bytes
+if (vertexSize % 4 != 0 || vertexSize < 1 || vertexSize > 256)
+{
+    throw new ArgumentException("Invalid vertex size");
+}
+```
+
+## MeshOptimizer Index Decoder
+
+Decodes index buffers compressed with meshoptimizer.
+
+### Namespace
+
+```csharp
+using ValveResourceFormat.Compression;
+```
+
+### Decoding Index Buffers
+
+```csharp
+var indexCount = 3072;  // Must be multiple of 3
+var indexSize = 2;      // 2 for uint16, 4 for uint32
+var compressedData = ReadCompressedIndexData();
+
+var decodedIndices = MeshOptimizerIndexDecoder.DecodeIndexBuffer(
+    indexCount,
+    indexSize,
+    compressedData
+);
+
+// decodedIndices contains uncompressed index data
+```
+
+### Reading Decoded Indices
+
+```csharp
+var indices = MeshOptimizerIndexDecoder.DecodeIndexBuffer(
+    indexCount, indexSize, compressedData
+);
+
+if (indexSize == 2)
+{
+    // Read as uint16
+    for (int i = 0; i < indexCount; i++)
+    {
+        var index = BitConverter.ToUInt16(indices, i * 2);
+        Console.WriteLine($"Index {i}: {index}");
+    }
+}
+else
+{
+    // Read as uint32
+    for (int i = 0; i < indexCount; i++)
+    {
+        var index = BitConverter.ToUInt32(indices, i * 4);
+        Console.WriteLine($"Index {i}: {index}");
+    }
+}
+```
+
+## Performance Considerations
+
+### SIMD Acceleration
+
+Vertex decompression supports SIMD acceleration:
+
+```csharp
+using System.Runtime.Intrinsics;
+
+// Check if SIMD is available
+if (Vector.IsHardwareAccelerated)
+{
+    Console.WriteLine("SIMD acceleration is available");
+}
+
+// Enable SIMD for faster decompression
+var vertices = MeshOptimizerVertexDecoder.DecodeVertexBuffer(
+    vertexCount,
+    vertexSize,
+    buffer,
+    useSimd: true
+);
+```
+
+### Memory Efficiency
+
+Decoders use `ArrayPool` for temporary buffers:
+
+```csharp
+// The decoder automatically manages temporary buffers
+// No need to manually allocate or dispose
+var vertices = MeshOptimizerVertexDecoder.DecodeVertexBuffer(
+    vertexCount, vertexSize, buffer
+);
+```
+
+## Error Handling
+
+```csharp
+try
+{
+    var info = BlockCompress.GetDecompressedSize(reader);
+    var result = new byte[info.Size];
+    BlockCompress.FastDecompress(info, reader, result);
+}
+catch (ArgumentOutOfRangeException)
+{
+    Console.WriteLine("Output buffer too small");
+}
+catch (InvalidOperationException ex)
+{
+    Console.WriteLine($"Decompression failed: {ex.Message}");
+}
+```
+
+## Common Patterns
+
+### Decompressing Resource Data
+
+```csharp
+public byte[] DecompressResourceData(BinaryReader reader)
+{
+    // Read compression header
+    var info = BlockCompress.GetDecompressedSize(reader);
+    
+    // Check if compression is needed
+    if (!info.IsCompressed)
+    {
+        // Data is uncompressed, just read it
+        return reader.ReadBytes(info.Size);
+    }
+    
+    // Decompress
+    var buffer = new byte[info.Size];
+    BlockCompress.FastDecompress(info, reader, buffer);
+    return buffer;
+}
+```
+
+### Processing Mesh Data
+
+```csharp
+public void ProcessMeshBuffers(
+    byte[] compressedVertices,
+    byte[] compressedIndices,
+    int vertexCount,
+    int indexCount)
+{
+    // Decode vertices
+    var vertices = MeshOptimizerVertexDecoder.DecodeVertexBuffer(
+        vertexCount,
+        32,  // vertex stride
+        compressedVertices
+    );
+    
+    // Decode indices
+    var indices = MeshOptimizerIndexDecoder.DecodeIndexBuffer(
+        indexCount,
+        2,  // uint16 indices
+        compressedIndices
+    );
+    
+    // Process mesh data
+    RenderMesh(vertices, indices);
+}
+```
+
+## Compression Format Details
+
+### Block Compression Algorithm
+
+The block compression uses a simple LZ-style algorithm:
+
+1. **Block Mask**: 16-bit mask indicating literal vs. back-reference
+2. **Literals**: Direct byte values
+3. **Back-references**: Offset and length encoding
+
+### MeshOptimizer Format
+
+MeshOptimizer uses specialized encoding:
+
+- **Vertex buffers**: Delta encoding with zigzag compression
+- **Index buffers**: Triangle strip optimization with FIFO caches
+- **Version headers**: Format version identification
+
+## See Also
+
+- [Texture Decoders](/api/utils/texture-decoders) - Texture format decompression
+- [Compression](/advanced/compression) - Advanced compression topics

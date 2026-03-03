@@ -1,0 +1,118 @@
+---
+title: GUI Overview
+description: Introduction to Source 2 Viewer GUI application for browsing and viewing Source 2 game assets
+---
+
+Source 2 Viewer is a desktop application that provides a graphical interface for browsing VPK archives, viewing assets, and exporting content from Source 2 games.
+
+## Download
+
+Download the latest version of Source 2 Viewer from the official website:
+
+[**Download Source 2 Viewer**](https://s2v.app/)
+
+The GUI application is Windows-only but can run on macOS and Linux using Wine. For cross-platform usage, use the [command-line tool](/cli/overview) instead.
+
+## What is Source 2 Viewer?
+
+Source 2 Viewer (S2V) is a free, open-source desktop application built with .NET WinForms that allows you to:
+
+- Browse VPK package archives from Source 2 games
+- View and preview 3D models, textures, materials, maps, and particles
+- Extract and export assets to standard formats
+- Play audio files and view animations
+- Decompile resources to editable formats
+- Inspect game file structures
+
+<CardGroup cols={2}>
+  <Card title="VPK Browser" icon="folder-open" href="/gui/vpk-browser">
+    Navigate and search through game archives
+  </Card>
+  <Card title="Asset Viewer" icon="eye" href="/gui/asset-viewer">
+    Preview models, textures, maps, and more
+  </Card>
+  <Card title="Features" icon="star" href="/gui/features">
+    Explore all capabilities and tools
+  </Card>
+  <Card title="Settings" icon="gear" href="/gui/settings">
+    Configure display, rendering, and behavior
+  </Card>
+</CardGroup>
+
+## Getting Started
+
+### Opening Game Files
+
+There are several ways to open files in Source 2 Viewer:
+
+1. **Game Explorer** - Automatically detects VPK files from installed Steam games
+2. **File > Open** - Manually browse for VPK archives or individual asset files
+3. **Drag and Drop** - Drop VPK files or folders directly onto the application window
+4. **Recent Files** - Access previously opened files from the File menu
+
+### Exploring Archives
+
+Once a VPK is opened, you'll see a tree view of all files in the archive. You can:
+
+- Click folders to expand and browse the file hierarchy
+- Use the search box to find files by name or extension
+- Click files to preview them in the viewer panel
+- Right-click files for export and extraction options
+
+### Viewing Assets
+
+Source 2 Viewer automatically selects the appropriate viewer based on file type:
+
+- **3D Viewer** - Models, maps, particles, navigation meshes
+- **Texture Viewer** - Textures with channel isolation and format controls
+- **Audio Player** - Sound files with waveform visualization
+- **Text Viewer** - Scripts, keyvalues, decompiled resources
+- **Hex Viewer** - Raw binary data inspection
+
+## Supported Games
+
+Source 2 Viewer supports all Source 2 games, including:
+
+- Counter-Strike 2
+- Dota 2
+- Deadlock
+- Half-Life: Alyx
+- SteamVR
+- Aperture Desk Job
+- Artifact
+- Dota Underlords
+- The Lab
+
+[View complete list on SteamDB](https://steamdb.info/tech/Engine/Source2/)
+
+<Note>
+s&box is partially supported but uses a heavily modified version of Source 2 that may cause compatibility issues.
+</Note>
+
+## System Requirements
+
+- **Operating System**: Windows 10 or later (or Wine on macOS/Linux)
+- **Framework**: .NET (included in installer)
+- **Graphics**: OpenGL-compatible GPU for 3D rendering
+- **Storage**: Minimal (application is lightweight)
+
+## Settings Location
+
+Source 2 Viewer stores its settings and preferences in:
+
+```
+%LocalAppData%\Source2Viewer\settings.vdf
+```
+
+This file contains window positions, recent files, bookmarks, camera positions, and all user preferences.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Learn About Features" icon="list-check" href="/gui/features">
+    Discover all the tools and capabilities available in the GUI
+  </Card>
+  <Card title="Configure Settings" icon="sliders" href="/gui/settings">
+    Customize rendering quality, themes, and application behavior
+  </Card>
+</CardGroup>

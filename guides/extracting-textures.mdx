@@ -1,0 +1,322 @@
+---
+title: Extracting Textures
+description: Learn how to extract and export Source 2 textures to PNG, EXR, and other formats
+---
+
+The `TextureExtract` class provides methods for extracting texture resources to standard image formats like PNG and EXR.
+
+## Basic Texture Extraction
+
+Extract a texture resource to a `ContentFile`:
+
+<Steps>
+  <Step title="Load the texture resource">
+    ```csharp
+    using ValveResourceFormat;
+    using ValveResourceFormat.IO;
+    
+    var resource = new Resource();
+    resource.Read("materials/dev/dev_metal.vtex_c");
+    ```
+  </Step>
+
+  <Step title="Create TextureExtract instance">
+    ```csharp
+    var textureExtract = new TextureExtract(resource);
+    ```
+  </Step>
+
+  <Step title="Extract to ContentFile">
+    ```csharp
+    using var contentFile = textureExtract.ToContentFile();
+    ```
+  </Step>
+
+  <Step title="Save the output">
+    ```csharp
+    // Save the main vtex file
+    if (contentFile.Data != null)
+    {
+        File.WriteAllBytes("output.vtex", contentFile.Data);
+    }
+    
+    // Save image sub-files
+    foreach (var subFile in contentFile.SubFiles)
+    {
+        var imageData = subFile.Extract();
+        File.WriteAllBytes(subFile.FileName, imageData);
+    }
+    ```
+  </Step>
+</Steps>
+
+## Extract Options
+
+`TextureExtract` provides several options for controlling extraction:
+
+```csharp
+var textureExtract = new TextureExtract(resource)
+{
+    DecodeFlags = TextureDecoders.TextureCodec.Auto,
+    LatLongCombineCubemap = true,  // Combine cubemap faces
+    IgnoreVtexFile = false          // Whether to skip vtex file generation
+};
+
+var contentFile = textureExtract.ToContentFile();
+```
+
+## Output Format Detection
+
+The library automatically determines the output format:
+
+```csharp
+var texture = (Texture)resource.DataBlock;
+var textureExtract = new TextureExtract(resource);
+
+// Check output format
+if (textureExtract.ExportExr)
+{
+    Console.WriteLine("Exporting as EXR (HDR)");
+}
+else
+{
+    Console.WriteLine("Exporting as PNG (LDR)");
+}
+
+// Get the extension
+var extension = textureExtract.ImageOutputExtension; // ".exr" or ".png"
+```
+
+<Note>
+HDR textures are automatically exported as EXR format unless `ForceLDR` decode flag is set.
+</Note>
+
+## Generating Bitmaps
+
+Generate an SKBitmap directly from a texture:
+
+```csharp
+using ValveResourceFormat.ResourceTypes;
+
+var texture = (Texture)resource.DataBlock;
+
+// Generate bitmap for the full texture
+var bitmap = texture.GenerateBitmap(
+    depth: 0,
+    face: Texture.CubemapFace.Right,
+    decodeFlags: TextureDecoders.TextureCodec.Auto
+);
+
+// Use the bitmap
+Console.WriteLine($"Size: {bitmap.Width}x{bitmap.Height}");
+
+// Don't forget to dispose
+bitmap.Dispose();
+```
+
+## Converting to PNG
+
+Convert a bitmap to PNG bytes:
+
+```csharp
+using var bitmap = texture.GenerateBitmap();
+var pngBytes = TextureExtract.ToPngImage(bitmap);
+File.WriteAllBytes("output.png", pngBytes);
+```
+
+## Converting to EXR
+
+For HDR textures, export to EXR format:
+
+```csharp
+var texture = (Texture)resource.DataBlock;
+
+if (texture.IsHighDynamicRange)
+{
+    using var bitmap = texture.GenerateBitmap();
+    var exrBytes = TextureExtract.ToExrImage(bitmap);
+    File.WriteAllBytes("output.exr", exrBytes);
+}
+```
+
+## Working with Cubemaps
+
+Handle cubemap textures with multiple faces:
+
+```csharp
+var texture = (Texture)resource.DataBlock;
+
+if (texture.Flags.HasFlag(VTexFlags.CUBE_TEXTURE))
+{
+    var textureExtract = new TextureExtract(resource)
+    {
+        LatLongCombineCubemap = true  // Combine into latlong
+    };
+    
+    var contentFile = textureExtract.ToContentFile();
+    
+    // This will generate either:
+    // - One latlong image (if LatLongCombineCubemap = true and HDR)
+    // - Six separate face images (rt, lf, bk, ft, up, dn)
+}
+```
+
+## Array Textures
+
+Extract array textures (multiple depth slices):
+
+```csharp
+var texture = (Texture)resource.DataBlock;
+
+if (texture.Depth > 1)
+{
+    var textureExtract = new TextureExtract(resource);
+    var contentFile = textureExtract.ToContentFile();
+    
+    // Sub-files will be named with depth indices:
+    // texture_z000.png, texture_z001.png, etc.
+    foreach (var subFile in contentFile.SubFiles)
+    {
+        Console.WriteLine($"Depth slice: {subFile.FileName}");
+        var imageData = subFile.Extract();
+        File.WriteAllBytes(subFile.FileName, imageData);
+    }
+}
+```
+
+## Extracting Sprite Sheets
+
+Extract individual sprites from sprite sheet textures:
+
+```csharp
+var textureExtract = new TextureExtract(resource);
+
+if (textureExtract.TryGetMksData(out var sprites, out var mks))
+{
+    Console.WriteLine("Sprite sheet detected");
+    Console.WriteLine($"MKS script:\n{mks}");
+    
+    var contentFile = textureExtract.ToContentFile();
+    
+    // Save MKS file
+    var mksFile = contentFile.SubFiles.First(f => f.FileName.EndsWith(".mks"));
+    File.WriteAllBytes(mksFile.FileName, mksFile.Extract());
+    
+    // Save individual sprites
+    var spriteFiles = contentFile.SubFiles.Where(f => f.FileName.EndsWith(".png"));
+    foreach (var sprite in spriteFiles)
+    {
+        var imageData = sprite.Extract();
+        File.WriteAllBytes(sprite.FileName, imageData);
+    }
+}
+```
+
+## Channel Extraction
+
+Extract specific color channels from textures:
+
+```csharp
+using ValveResourceFormat.CompiledShader;
+
+var texture = (Texture)resource.DataBlock;
+using var bitmap = texture.GenerateBitmap();
+
+// Extract red channel only (as grayscale)
+var channel = new ChannelMapping.Channel[] { ChannelMapping.Channel.R };
+var channelMapping = new ChannelMapping(channel);
+var redChannelBytes = TextureExtract.ToPngImageChannels(bitmap, channelMapping);
+File.WriteAllBytes("red_channel.png", redChannelBytes);
+
+// Extract RGB channels (no alpha)
+var rgbBytes = TextureExtract.ToPngImageChannels(bitmap, ChannelMapping.RGB);
+File.WriteAllBytes("rgb_only.png", rgbBytes);
+```
+
+## Material Map Unpacking
+
+When used with `MaterialExtract`, textures can be unpacked into separate material maps:
+
+```csharp
+using ValveResourceFormat.ResourceTypes;
+
+var material = (Material)materialResource.DataBlock;
+var textureParam = material.TextureParams.First();
+
+var textureResource = fileLoader.LoadFileCompiled(textureParam.Value);
+var textureExtract = new TextureExtract(textureResource);
+
+// Define unpacking information
+var unpackInfos = new[]
+{
+    new MaterialExtract.UnpackInfo
+    {
+        TextureType = "Color",
+        FileName = "output_color.png",
+        Channel = ChannelMapping.RGB
+    },
+    new MaterialExtract.UnpackInfo
+    {
+        TextureType = "Metalness",
+        FileName = "output_metal.png",
+        Channel = ChannelMapping.R
+    }
+};
+
+var contentFile = textureExtract.ToMaterialMaps(unpackInfos);
+```
+
+## Latlong Cubemap Conversion
+
+Convert cubemap faces to latlong projection:
+
+```csharp
+var texture = (Texture)resource.DataBlock;
+
+if (texture.IsHighDynamicRange && texture.Flags.HasFlag(VTexFlags.CUBE_TEXTURE))
+{
+    var faces = new SKPixmap[6];
+    var bitmaps = new SKBitmap[6];
+    
+    try
+    {
+        for (var i = 0; i < 6; i++)
+        {
+            bitmaps[i] = texture.GenerateBitmap(face: (Texture.CubemapFace)i);
+            faces[i] = bitmaps[i].PeekPixels();
+        }
+        
+        using var latLongBitmap = TextureExtract.CreateLatLongFromCubemapFaces(faces);
+        var exrBytes = TextureExtract.ToExrImage(latLongBitmap);
+        File.WriteAllBytes("environment.exr", exrBytes);
+    }
+    finally
+    {
+        for (var i = 0; i < 6; i++)
+        {
+            faces[i]?.Dispose();
+            bitmaps[i]?.Dispose();
+        }
+    }
+}
+```
+
+<Warning>
+Always dispose of SKBitmap and SKPixmap objects to prevent memory leaks:
+```csharp
+using var bitmap = texture.GenerateBitmap();
+// Use bitmap
+// Automatically disposed
+```
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Decompiling Materials" icon="palette" href="/guides/decompiling-materials">
+    Extract material definitions
+  </Card>
+  <Card title="Exporting Models" icon="cube" href="/guides/exporting-models">
+    Export model resources to glTF
+  </Card>
+</CardGroup>

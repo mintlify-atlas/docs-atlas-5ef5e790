@@ -1,0 +1,501 @@
+---
+title: Usage Examples
+description: Real-world examples for common CLI tasks
+---
+
+This page provides practical examples for common tasks using the ValveResourceFormat CLI.
+
+## Working with VPK Archives
+
+### List All Files
+
+Display all files in a VPK archive:
+
+<CodeGroup>
+```powershell Windows
+./Source2Viewer-CLI.exe -i "core/pak01_dir.vpk" --vpk_list
+```
+
+```bash Linux/macOS
+./Source2Viewer-CLI -i "core/pak01_dir.vpk" --vpk_list
+```
+</CodeGroup>
+
+Add `--vpk_dir` to include metadata (CRC, size, archive index):
+
+```bash
+./Source2Viewer-CLI -i "core/pak01_dir.vpk" --vpk_dir
+```
+
+### Extract All Files
+
+Extract the entire VPK without decompilation:
+
+```bash
+./Source2Viewer-CLI -i "core/pak01_dir.vpk" --output "pak01_exported"
+```
+
+Extract and decompile all files:
+
+```bash
+./Source2Viewer-CLI -i "core/pak01_dir.vpk" --output "pak01_decompiled" -d
+```
+
+### Extract Specific Folders
+
+Extract only the Panorama layout folder:
+
+```bash
+./Source2Viewer-CLI -i "core/pak01_dir.vpk" \
+  --output "pak01_exported" \
+  --vpk_filepath "panorama/layout"
+```
+
+Extract multiple folders:
+
+```bash
+./Source2Viewer-CLI -i "core/pak01_dir.vpk" \
+  --output "exported" \
+  --vpk_filepath "panorama/,sounds/,scripts/"
+```
+
+### Extract by File Type
+
+Extract only textures:
+
+```bash
+./Source2Viewer-CLI -i "core/pak01_dir.vpk" \
+  -e "vtex_c" \
+  -o "textures" \
+  -d
+```
+
+Extract only Panorama UI files:
+
+```bash
+./Source2Viewer-CLI -i "core/pak01_dir.vpk" \
+  -e "vjs_c,vxml_c,vcss_c" \
+  -o "panorama" \
+  -d
+```
+
+### Incremental Export
+
+Use cached manifest to only extract changed files:
+
+```bash
+./Source2Viewer-CLI -i "core/pak01_dir.vpk" \
+  -o "exported" \
+  -d \
+  --vpk_cache
+```
+
+On the first run, all files are extracted. On subsequent runs, only files with changed CRC32 checksums are processed.
+
+### Verify VPK Integrity
+
+Verify checksums and signatures:
+
+```bash
+./Source2Viewer-CLI -i "core/pak01_dir.vpk" --vpk_verify
+```
+
+## Working with Individual Files
+
+### Inspect File Structure
+
+Display resource information without extracting:
+
+```bash
+./Source2Viewer-CLI -i "file.vmdl_c"
+```
+
+Output shows:
+- Resource type and version
+- File size
+- External references (RERL block)
+- Resource blocks
+
+Print all block contents:
+
+```bash
+./Source2Viewer-CLI -i "file.vtex_c" --all
+```
+
+Print a specific block (similar to Source 2's `resourceinfo.exe`):
+
+```bash
+./Source2Viewer-CLI -i "file.vmdl_c" --block DATA
+```
+
+### Decompile Single File
+
+Decompile a texture to PNG:
+
+```bash
+./Source2Viewer-CLI -i "texture.vtex_c" -o "texture.png"
+```
+
+Decompile a material:
+
+```bash
+./Source2Viewer-CLI -i "material.vmat_c" -o "material.vmat"
+```
+
+Decompile a Panorama layout:
+
+```bash
+./Source2Viewer-CLI -i "layout.vxml_c" -o "layout.xml"
+```
+
+## Working with Models
+
+### Basic Model Export
+
+Export a model to GLB format:
+
+```bash
+./Source2Viewer-CLI -i "model.vmdl_c" \
+  -o "model.glb" \
+  -d \
+  --gltf_export_format glb
+```
+
+Export to glTF (text format with separate resources):
+
+```bash
+./Source2Viewer-CLI -i "model.vmdl_c" \
+  -o "model.gltf" \
+  -d \
+  --gltf_export_format gltf
+```
+
+### Export with Materials
+
+Include materials in the export:
+
+```bash
+./Source2Viewer-CLI -i "model.vmdl_c" \
+  -o "model.glb" \
+  -d \
+  --gltf_export_format glb \
+  --gltf_export_materials
+```
+
+With texture adaptations for better glTF compatibility:
+
+```bash
+./Source2Viewer-CLI -i "model.vmdl_c" \
+  -o "model.glb" \
+  -d \
+  --gltf_export_format glb \
+  --gltf_export_materials \
+  --gltf_textures_adapt
+```
+
+### Export with Animations
+
+Export all animations:
+
+```bash
+./Source2Viewer-CLI -i "character.vmdl_c" \
+  -o "character.glb" \
+  -d \
+  --gltf_export_format glb \
+  --gltf_export_animations
+```
+
+Export specific animations:
+
+```bash
+./Source2Viewer-CLI -i "character.vmdl_c" \
+  -o "character.glb" \
+  -d \
+  --gltf_export_format glb \
+  --gltf_export_animations \
+  --gltf_animation_list "idle,walk,run"
+```
+
+### Complete Model Export
+
+Export with everything:
+
+```bash
+./Source2Viewer-CLI -i "character.vmdl_c" \
+  -o "character.glb" \
+  -d \
+  --gltf_export_format glb \
+  --gltf_export_materials \
+  --gltf_export_animations \
+  --gltf_textures_adapt \
+  --gltf_export_extras
+```
+
+### Export Specific Meshes
+
+Export only certain meshes from a model:
+
+```bash
+./Source2Viewer-CLI -i "model.vmdl_c" \
+  -o "model.glb" \
+  -d \
+  --gltf_export_format glb \
+  --gltf_mesh_list "body,head"
+```
+
+## Working with Textures
+
+### Basic Texture Export
+
+```bash
+./Source2Viewer-CLI -i "texture.vtex_c" -o "texture.png"
+```
+
+### Control Decode Flags
+
+Disable automatic decoding:
+
+```bash
+./Source2Viewer-CLI -i "texture.vtex_c" \
+  -o "texture.png" \
+  --texture_decode_flags none
+```
+
+Force specific decoding:
+
+```bash
+./Source2Viewer-CLI -i "texture.vtex_c" \
+  -o "texture.png" \
+  --texture_decode_flags foceldr
+```
+
+## Working with Shaders
+
+### Decompile All Shaders
+
+Extract and decompile all shaders from a VPK:
+
+<CodeGroup>
+```powershell Windows
+./Source2Viewer-CLI.exe -i "game/shaders_vulkan_dir.vpk" \
+  --vpk_decompile \
+  --vpk_extensions "vcs" \
+  --output "shaders"
+```
+
+```bash Linux/macOS
+./Source2Viewer-CLI -i "game/shaders_vulkan_dir.vpk" \
+  --vpk_decompile \
+  --vpk_extensions "vcs" \
+  --output "shaders"
+```
+</CodeGroup>
+
+### Decompile Single Shader
+
+```bash
+./Source2Viewer-CLI -i "shader.vcs" -o "shader.vfx"
+```
+
+## Batch Processing
+
+### Process Entire Folder
+
+Process all compiled files in a folder:
+
+```bash
+./Source2Viewer-CLI -i "game/materials" \
+  -o "exported/materials" \
+  --recursive \
+  -d
+```
+
+### Process with Multiple Threads
+
+Use parallel processing for faster batch operations:
+
+```bash
+./Source2Viewer-CLI -i "game/materials" \
+  -o "exported" \
+  --recursive \
+  -d \
+  --threads 8
+```
+
+<Note>
+Set `--threads` to your CPU core count for optimal performance.
+</Note>
+
+### Filter by Extension
+
+Process only specific file types:
+
+```bash
+./Source2Viewer-CLI -i "game/" \
+  -o "exported" \
+  --recursive \
+  -e "vtex_c,vmat_c" \
+  -d \
+  --threads 4
+```
+
+## Automation Examples
+
+### Bash Script for Batch Export
+
+```bash
+#!/bin/bash
+
+# Export multiple VPKs with caching
+for vpk in core/*.vpk; do
+    if [[ $vpk == *"_dir.vpk" ]]; then
+        echo "Processing $vpk"
+        ./Source2Viewer-CLI -i "$vpk" \
+            -o "extracted/$(basename "$vpk" _dir.vpk)" \
+            -d \
+            --vpk_cache \
+            --threads 8
+    fi
+done
+```
+
+### PowerShell Script for Model Export
+
+```powershell
+# Export all models in a folder to GLB
+Get-ChildItem -Path "models" -Filter "*.vmdl_c" -Recurse | ForEach-Object {
+    $outputPath = $_.FullName -replace '\.vmdl_c$', '.glb' -replace 'models', 'exported'
+    $outputDir = Split-Path -Parent $outputPath
+    
+    New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+    
+    Write-Host "Exporting $($_.Name)"
+    ./Source2Viewer-CLI.exe -i $_.FullName `
+        -o $outputPath `
+        -d `
+        --gltf_export_format glb `
+        --gltf_export_materials `
+        --gltf_export_animations
+}
+```
+
+### Python Integration
+
+```python
+import subprocess
+import os
+
+def export_model(input_path, output_path):
+    """Export a Source 2 model to GLB format."""
+    cmd = [
+        './Source2Viewer-CLI',
+        '-i', input_path,
+        '-o', output_path,
+        '-d',
+        '--gltf_export_format', 'glb',
+        '--gltf_export_materials',
+        '--gltf_export_animations'
+    ]
+    
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode == 0:
+        print(f"Successfully exported {input_path}")
+    else:
+        print(f"Error: {result.stderr}")
+    
+    return result.returncode
+
+# Usage
+export_model('models/character.vmdl_c', 'exported/character.glb')
+```
+
+## Statistics and Analysis
+
+### Scan Game Files
+
+Collect statistics on all Source 2 files in a game folder:
+
+```bash
+./Source2Viewer-CLI -i "game/" --recursive --stats
+```
+
+### Scan Steam Libraries
+
+Scan all Steam library folders for Source 2 files:
+
+```bash
+./Source2Viewer-CLI -i "steam" --stats
+```
+
+### Detailed Statistics
+
+Collect detailed statistics with example file paths:
+
+```bash
+./Source2Viewer-CLI -i "game/" \
+  --recursive \
+  --stats \
+  --stats_print_files \
+  --stats_unique_deps
+```
+
+### Test glTF Export
+
+Test glTF export compatibility on all models:
+
+```bash
+./Source2Viewer-CLI -i "game/models" \
+  --recursive \
+  --stats \
+  --gltf_test
+```
+
+## Troubleshooting
+
+### Check File Information
+
+If extraction fails, inspect the file first:
+
+```bash
+./Source2Viewer-CLI -i "problematic_file.vtex_c" --all
+```
+
+### Test Small Batch First
+
+When processing large archives, test with filters first:
+
+```bash
+# Test with a small subset
+./Source2Viewer-CLI -i "pak01_dir.vpk" \
+  -f "materials/test/" \
+  -o "test_export" \
+  -d
+
+# If successful, process everything
+./Source2Viewer-CLI -i "pak01_dir.vpk" \
+  -o "full_export" \
+  -d \
+  --threads 8
+```
+
+### Performance Tips
+
+<Tip>
+**For large VPK exports:**
+1. Use `--vpk_cache` to enable incremental exports
+2. Set `--threads` to your CPU core count
+3. Use filters (`-e`, `-f`) to process only needed files
+4. Store output on an SSD for better performance
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Command Reference" icon="book" href="/cli/commands">
+    Complete documentation of all CLI options
+  </Card>
+  <Card title="Resource Types" icon="cube" href="/resources/types">
+    Learn about supported file formats
+  </Card>
+</CardGroup>

@@ -1,0 +1,211 @@
+---
+title: Texture
+description: API reference for the Texture resource type class
+---
+
+The `Texture` class represents a texture resource containing image data with various formats and metadata.
+
+## Properties
+
+<ResponseField name="Version" type="ushort">
+  Gets the texture version number.
+</ResponseField>
+
+<ResponseField name="Width" type="ushort">
+  Gets the width of the texture in pixels.
+</ResponseField>
+
+<ResponseField name="Height" type="ushort">
+  Gets the height of the texture in pixels.
+</ResponseField>
+
+<ResponseField name="Depth" type="ushort">
+  Gets the depth of the texture for volume textures, or the number of array slices.
+</ResponseField>
+
+<ResponseField name="ActualWidth" type="ushort">
+  Gets the actual width of the texture, using NonPow2Width if available and valid, otherwise Width.
+</ResponseField>
+
+<ResponseField name="ActualHeight" type="ushort">
+  Gets the actual height of the texture, using NonPow2Height if available and valid, otherwise Height.
+</ResponseField>
+
+<ResponseField name="Reflectivity" type="Vector4">
+  Gets the reflectivity values as a 4-component vector (RGBA).
+</ResponseField>
+
+<ResponseField name="Flags" type="VTexFlags">
+  Gets the texture flags that define various properties and behaviors.
+</ResponseField>
+
+<ResponseField name="Format" type="VTexFormat">
+  Gets the pixel format of the texture data.
+</ResponseField>
+
+<ResponseField name="NumMipLevels" type="byte">
+  Gets the number of mip levels in the texture.
+</ResponseField>
+
+<ResponseField name="Picmip0Res" type="uint">
+  Gets the picmip 0 resolution value.
+</ResponseField>
+
+<ResponseField name="ExtraData" type="Dictionary<VTexExtraData, byte[]>">
+  Gets the dictionary containing extra data blocks associated with the texture.
+</ResponseField>
+
+<ResponseField name="NonPow2Width" type="ushort">
+  Gets the non-power-of-2 width value, if different from the main width.
+</ResponseField>
+
+<ResponseField name="NonPow2Height" type="ushort">
+  Gets the non-power-of-2 height value, if different from the main height.
+</ResponseField>
+
+<ResponseField name="BlockSize" type="int">
+  Gets the block size in bytes for the current texture format.
+</ResponseField>
+
+<ResponseField name="IsHighDynamicRange" type="bool">
+  Gets a value indicating whether this texture uses a high dynamic range format.
+</ResponseField>
+
+<ResponseField name="IsRawJpeg" type="bool">
+  Gets a value indicating whether this texture contains raw JPEG data.
+</ResponseField>
+
+<ResponseField name="IsRawPng" type="bool">
+  Gets a value indicating whether this texture contains raw PNG data.
+</ResponseField>
+
+<ResponseField name="IsRawWebp" type="bool">
+  Gets a value indicating whether this texture contains raw WebP data.
+</ResponseField>
+
+## Methods
+
+### GenerateBitmap
+
+Generate a bitmap for given parameters.
+
+<ParamField path="depth" type="uint" default="0">
+  The depth to extract.
+</ParamField>
+
+<ParamField path="face" type="CubemapFace" default="0">
+  The face to extract for cube textures.
+</ParamField>
+
+<ParamField path="mipLevel" type="uint" default="0">
+  The mip level to extract.
+</ParamField>
+
+<ParamField path="decodeFlags" type="TextureCodec" default="TextureCodec.Auto">
+  The preferred codec to use when decoding the texture.
+</ParamField>
+
+<ResponseField name="returns" type="SKBitmap">
+  Skia bitmap containing the decoded texture data.
+</ResponseField>
+
+### GetSpriteSheetData
+
+Retrieves sprite sheet data if available in the texture's extra data.
+
+<ResponseField name="returns" type="SpritesheetData?">
+  The sprite sheet data, or null if not available.
+</ResponseField>
+
+### CalculateTextureDataSize
+
+Calculates the total size of texture data across all mip levels.
+
+<ResponseField name="returns" type="int">
+  The total size in bytes.
+</ResponseField>
+
+### CalculateBufferSizeForMipLevel
+
+Calculate buffer size that is required to hold data of specified mip level.
+
+<ParamField path="mipLevel" type="uint">
+  Mip level for which to calculate buffer size.
+</ParamField>
+
+<ResponseField name="returns" type="int">
+  Buffer size in bytes.
+</ResponseField>
+
+### ReadTextureMipLevel
+
+Read single mip level of texture. Buffer size must be at least `CalculateBufferSizeForMipLevel(uint)`.
+
+<ParamField path="output" type="Span<byte>">
+  Buffer that will receive texture data.
+</ParamField>
+
+<ParamField path="mipLevel" type="uint">
+  Mip level for which to read texture data.
+</ParamField>
+
+### GetEveryMipLevelTexture
+
+Get every mip level size starting from the smallest one. Used when uploading textures to the GPU.
+
+<ParamField path="buffer" type="byte[]">
+  Buffer to use when yielding textures, it should be size of `GetBiggestBufferSize()` or bigger.
+</ParamField>
+
+<ParamField path="minMipLevelAllowed" type="int" default="0">
+  The minimum mip level for which to read texture data.
+</ParamField>
+
+<ResponseField name="returns" type="IEnumerable<(uint Level, int Width, int Height, int Depth, int BufferSize)>">
+  Enumerable of mip level information tuples.
+</ResponseField>
+
+### RetrieveCodecFromResourceEditInfo
+
+Retrieves the texture codec information from the resource's edit info.
+
+<ResponseField name="returns" type="TextureCodec">
+  The texture codec flags derived from the edit info.
+</ResponseField>
+
+## Enumerations
+
+### CubemapFace
+
+Defines the six faces of a cubemap texture.
+
+- `PositiveX` - Right face
+- `NegativeX` - Left face
+- `PositiveY` - Back face
+- `NegativeY` - Front face
+- `PositiveZ` - Up face
+- `NegativeZ` - Down face
+
+## Usage Example
+
+```csharp
+var resource = new Resource();
+var texture = resource.DataBlock as Texture;
+
+if (texture != null)
+{
+    Console.WriteLine($"Texture: {texture.Width}x{texture.Height}");
+    Console.WriteLine($"Format: {texture.Format}");
+    Console.WriteLine($"Mip Levels: {texture.NumMipLevels}");
+    
+    // Generate a bitmap from the texture
+    var bitmap = texture.GenerateBitmap();
+    
+    // Check for sprite sheet data
+    var spriteData = texture.GetSpriteSheetData();
+    if (spriteData != null)
+    {
+        Console.WriteLine($"Sprite sequences: {spriteData.Sequences.Length}");
+    }
+}
+```

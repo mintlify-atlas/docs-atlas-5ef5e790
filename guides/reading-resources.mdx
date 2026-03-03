@@ -1,0 +1,171 @@
+---
+title: Reading and Parsing Resources
+description: Learn how to read and parse Source 2 resource files using ValveResourceFormat
+---
+
+ValveResourceFormat provides a comprehensive API for reading and parsing Source 2 resource files. This guide covers the basics of loading resources and accessing their data.
+
+## Basic Resource Reading
+
+The `Resource` class is the entry point for reading any Source 2 compiled resource file (files ending in `_c`).
+
+<Steps>
+  <Step title="Create a Resource instance">
+    ```csharp
+    using ValveResourceFormat;
+    
+    var resource = new Resource();
+    ```
+  </Step>
+
+  <Step title="Read from file">
+    ```csharp
+    resource.Read("path/to/file_c");
+    ```
+  </Step>
+
+  <Step title="Access the data block">
+    ```csharp
+    var dataBlock = resource.DataBlock;
+    if (dataBlock != null)
+    {
+        // Work with the resource data
+        Console.WriteLine($"Resource type: {resource.ResourceType}");
+    }
+    ```
+  </Step>
+</Steps>
+
+## Reading from Streams
+
+You can also read resources from streams, which is useful when working with VPK archives:
+
+```csharp
+using var stream = File.OpenRead("model.vmdl_c");
+var resource = new Resource();
+resource.Read(stream, verifyFileSize: true, leaveOpen: false);
+```
+
+<Note>
+The stream must remain open while accessing resource data, as some operations perform lazy reads.
+</Note>
+
+## Resource Types
+
+ValveResourceFormat automatically detects resource types based on file extensions:
+
+```csharp
+var resource = new Resource();
+resource.Read("materials/example.vmat_c");
+
+switch (resource.ResourceType)
+{
+    case ResourceType.Material:
+        var material = (Material)resource.DataBlock;
+        Console.WriteLine($"Shader: {material.ShaderName}");
+        break;
+    
+    case ResourceType.Model:
+        var model = (Model)resource.DataBlock;
+        Console.WriteLine($"Meshes: {model.GetEmbeddedMeshes().Count()}");
+        break;
+    
+    case ResourceType.Texture:
+        var texture = (Texture)resource.DataBlock;
+        Console.WriteLine($"Size: {texture.ActualWidth}x{texture.ActualHeight}");
+        break;
+}
+```
+
+## Working with Blocks
+
+Resources are composed of multiple blocks. You can access specific blocks:
+
+```csharp
+// Get a specific block type
+var editInfo = resource.GetBlockByType(BlockType.REDI) as ResourceEditInfo;
+if (editInfo != null)
+{
+    Console.WriteLine($"Input dependencies: {editInfo.InputDependencies.Count}");
+}
+
+// Check if a block exists
+if (resource.ContainsBlockType(BlockType.VBIB))
+{
+    var vbib = resource.GetBlockByType(BlockType.VBIB) as VBIB;
+    // Work with vertex/index buffers
+}
+
+// Access external references
+var rerl = resource.ExternalReferences;
+if (rerl != null)
+{
+    foreach (var reference in rerl.ResourceRefInfoList)
+    {
+        Console.WriteLine($"Reference: {reference.Name}");
+    }
+}
+```
+
+## File Metadata
+
+Access important metadata about the resource:
+
+```csharp
+var resource = new Resource();
+resource.Read("example.vmdl_c");
+
+Console.WriteLine($"File name: {resource.FileName}");
+Console.WriteLine($"File size: {resource.FileSize} bytes");
+Console.WriteLine($"Full size: {resource.FullFileSize} bytes");
+Console.WriteLine($"Header version: {resource.HeaderVersion}");
+Console.WriteLine($"Type version: {resource.Version}");
+Console.WriteLine($"Resource type: {resource.ResourceType}");
+Console.WriteLine($"Blocks: {resource.Blocks.Count}");
+```
+
+<Warning>
+Always dispose of `Resource` objects when done to release file handles:
+```csharp
+using (var resource = new Resource())
+{
+    resource.Read("file_c");
+    // Work with resource
+} // Automatically disposed
+```
+</Warning>
+
+## Error Handling
+
+Handle common errors when reading resources:
+
+```csharp
+try
+{
+    var resource = new Resource();
+    resource.Read("file_c");
+}
+catch (UnexpectedMagicException ex)
+{
+    Console.WriteLine("Not a valid resource file");
+}
+catch (InvalidDataException ex)
+{
+    Console.WriteLine($"Invalid data: {ex.Message}");
+}
+catch (FileNotFoundException ex)
+{
+    Console.WriteLine($"File not found: {ex.Message}");
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Working with VPK" icon="box-archive" href="/guides/working-with-vpk">
+    Learn how to read files from VPK archives
+  </Card>
+  <Card title="Extracting Textures" icon="image" href="/guides/extracting-textures">
+    Extract and export texture resources
+  </Card>
+</CardGroup>

@@ -1,0 +1,134 @@
+---
+title: Material
+description: API reference for the Material resource type class
+---
+
+The `Material` class represents a material resource containing shader parameters and texture references.
+
+## Properties
+
+<ResponseField name="Name" type="string">
+  Gets or sets the material name.
+</ResponseField>
+
+<ResponseField name="ShaderName" type="string">
+  Gets or sets the shader name used by this material.
+</ResponseField>
+
+<ResponseField name="IntParams" type="Dictionary<string, long>">
+  Gets the integer shader parameters.
+</ResponseField>
+
+<ResponseField name="FloatParams" type="Dictionary<string, float>">
+  Gets the floating-point shader parameters.
+</ResponseField>
+
+<ResponseField name="VectorParams" type="Dictionary<string, Vector4>">
+  Gets the vector shader parameters.
+</ResponseField>
+
+<ResponseField name="TextureParams" type="Dictionary<string, string>">
+  Gets the texture shader parameters.
+</ResponseField>
+
+<ResponseField name="IntAttributes" type="Dictionary<string, long>">
+  Gets the integer material attributes.
+</ResponseField>
+
+<ResponseField name="FloatAttributes" type="Dictionary<string, float>">
+  Gets the floating-point material attributes.
+</ResponseField>
+
+<ResponseField name="VectorAttributes" type="Dictionary<string, Vector4>">
+  Gets the vector material attributes.
+</ResponseField>
+
+<ResponseField name="StringAttributes" type="Dictionary<string, string>">
+  Gets the string material attributes.
+</ResponseField>
+
+<ResponseField name="DynamicExpressions" type="Dictionary<string, string>">
+  Gets the evaluated dynamic expressions for dynamic scalar and texture parameters.
+</ResponseField>
+
+<ResponseField name="InputSignature" type="VsInputSignature">
+  Gets the vertex shader input signature defining vertex attributes.
+</ResponseField>
+
+## Methods
+
+### GetShaderArguments
+
+Gets the shader arguments from integer parameters starting with "F_".
+
+<ResponseField name="returns" type="Dictionary<string, byte>">
+  Dictionary of shader argument names and values.
+</ResponseField>
+
+## Structures
+
+### VsInputSignature
+
+Represents the vertex shader input signature containing vertex attribute elements.
+
+<ResponseField name="Elements" type="InputSignatureElement[]">
+  Gets the array of input signature elements.
+</ResponseField>
+
+### InputSignatureElement
+
+Represents a single element in the vertex shader input signature.
+
+<ResponseField name="Name" type="string">
+  Gets the element name.
+</ResponseField>
+
+<ResponseField name="Semantic" type="string">
+  Gets the semantic name.
+</ResponseField>
+
+<ResponseField name="D3DSemanticName" type="string">
+  Gets the Direct3D semantic name.
+</ResponseField>
+
+<ResponseField name="D3DSemanticIndex" type="int">
+  Gets the Direct3D semantic index.
+</ResponseField>
+
+## Usage Example
+
+```csharp
+var resource = new Resource();
+var material = resource.DataBlock as Material;
+
+if (material != null)
+{
+    Console.WriteLine($"Material: {material.Name}");
+    Console.WriteLine($"Shader: {material.ShaderName}");
+    
+    // Access shader parameters
+    foreach (var (name, value) in material.FloatParams)
+    {
+        Console.WriteLine($"Float param {name}: {value}");
+    }
+    
+    // Access texture parameters
+    foreach (var (name, path) in material.TextureParams)
+    {
+        Console.WriteLine($"Texture {name}: {path}");
+    }
+    
+    // Get shader arguments (feature flags)
+    var shaderArgs = material.GetShaderArguments();
+    foreach (var (name, value) in shaderArgs)
+    {
+        Console.WriteLine($"Shader arg {name}: {value}");
+    }
+    
+    // Access input signature
+    foreach (var element in material.InputSignature.Elements)
+    {
+        Console.WriteLine($"Input: {element.Name} ({element.Semantic})");
+    }
+}
+```

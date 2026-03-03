@@ -1,0 +1,155 @@
+---
+title: DATA Block
+description: The DATA block contains the primary resource data in KeyValues3 format
+---
+
+The DATA block is the main content block in Source 2 resource files. It stores structured data in binary KeyValues3 (KV3) format, which is Valve's hierarchical data storage format.
+
+## Overview
+
+The DATA block type is represented by the `BinaryKV3` class, which handles deserialization of binary KV3 data into a structured object model.
+
+## Block Type
+
+```csharp
+BlockType.DATA
+```
+
+## Key Features
+
+- **Multiple KV3 Versions**: Supports KV3 versions 1 through 5
+- **Compression**: Handles uncompressed, LZ4, and ZSTD compression
+- **Type System**: Rich type system including primitives, strings, arrays, objects, and binary blobs
+- **Format Identification**: Stores format GUID for identifying data schema
+
+## Class Structure
+
+```csharp
+public partial class BinaryKV3 : Block
+{
+    public override BlockType Type => BlockType.DATA;
+    public KVObject Data { get; private set; }
+    public KV3ID? Encoding { get; private set; }
+    public KV3ID Format { get; private set; }
+}
+```
+
+## Properties
+
+### Data
+
+The deserialized KeyValues3 data as a structured `KVObject`.
+
+```csharp
+public KVObject Data { get; private set; }
+```
+
+### Format
+
+A GUID-based identifier that indicates the schema/format of the data.
+
+```csharp
+public KV3ID Format { get; private set; }
+```
+
+## Magic Numbers
+
+```csharp
+const int MAGIC0 = 0x03564B56;  // VKV3
+const int MAGIC1 = 0x4B563301;  // KV3\x01
+const int MAGIC2 = 0x4B563302;  // KV3\x02
+const int MAGIC3 = 0x4B563303;  // KV3\x03
+const int MAGIC4 = 0x4B563304;  // KV3\x04
+const int MAGIC5 = 0x4B563305;  // KV3\x05
+```
+
+## Usage Example
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.ResourceTypes;
+
+// Load a resource file
+var resource = new Resource();
+resource.Read("path/to/file.vmdl_c");
+
+// Get the DATA block
+var dataBlock = resource.DataBlock as BinaryKV3;
+
+if (dataBlock != null)
+{
+    // Access the structured data
+    var data = dataBlock.Data;
+    
+    // Get format identifier
+    var format = dataBlock.Format;
+    Console.WriteLine($"Format: {format.Name}");
+    
+    // Access properties
+    if (data.Properties.ContainsKey("m_name"))
+    {
+        var name = data.Properties["m_name"].Value;
+        Console.WriteLine($"Resource name: {name}");
+    }
+    
+    // Convert to text format
+    var kv3File = dataBlock.GetKV3File();
+    var textOutput = kv3File.ToString();
+}
+```
+
+## Reading from Stream
+
+```csharp
+var kv3 = new BinaryKV3();
+using var reader = new BinaryReader(stream);
+kv3.Read(reader);
+
+// Access the parsed data
+var rootObject = kv3.Data;
+```
+
+## Compression Methods
+
+The DATA block supports multiple compression methods:
+
+- **0**: Uncompressed
+- **1**: LZ4 compression (fast decompression)
+- **2**: ZSTD compression (better compression ratio)
+
+## Version Differences
+
+### Version 1
+- Basic KV3 format
+- Simple compression support
+- Single buffer structure
+
+### Version 2-4
+- Added ZSTD compression
+- Improved block structure
+- Binary blob support with separate blocks
+
+### Version 5
+- Dual buffer architecture for better memory layout
+- Auxiliary buffer for strings and metadata
+- Optimized object length storage
+
+## Converting to Text
+
+```csharp
+var dataBlock = resource.DataBlock as BinaryKV3;
+using var writer = new IndentedTextWriter(Console.Out);
+dataBlock.WriteText(writer);
+```
+
+## Related Types
+
+- `KVObject`: Represents a collection or array in KV3 data
+- `KVValue`: Represents a single value with type and flags
+- `KV3ID`: Format identifier using GUID
+
+## See Also
+
+- [NTRO Block](/api/blocks/ntro) - Type introspection for DATA block
+- [RERL Block](/api/blocks/rerl) - External resource references
+- [REDI Block](/api/blocks/redi) - Editor metadata and dependencies

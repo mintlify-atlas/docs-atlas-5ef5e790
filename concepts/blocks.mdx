@@ -1,0 +1,412 @@
+---
+title: Blocks
+description: Understanding the block-based structure of Source 2 resources (DATA, RERL, REDI, NTRO)
+---
+
+## Overview
+
+Source 2 resource files use a block-based structure where each resource contains one or more typed blocks. Each block serves a specific purpose and has a four-character identifier.
+
+## Block Structure
+
+All blocks inherit from the abstract `Block` class:
+
+```csharp
+// From Block.cs:8-60
+public abstract class Block
+{
+    /// <summary>
+    /// Gets the block type.
+    /// </summary>
+    public abstract BlockType Type { get; }
+
+    /// <summary>
+    /// Gets or sets the offset to the data.
+    /// </summary>
+    public uint Offset { get; set; }
+
+    /// <summary>
+    /// Gets or sets the data size.
+    /// </summary>
+    public uint Size { get; set; }
+
+    /// <summary>
+    /// Gets the resource this block belongs to.
+    /// </summary>
+    public required Resource Resource { get; set; }
+
+    public abstract void Read(BinaryReader reader);
+    public abstract void WriteText(IndentedTextWriter writer);
+    public abstract void Serialize(Stream stream);
+}
+```
+
+## Core Block Types
+
+### DATA Block
+
+<ResponseField name="DATA" type="BlockType">
+  The main data block containing the resource's primary content. The specific implementation varies by resource type.
+</ResponseField>
+
+The DATA block contains the actual resource data:
+
+```csharp
+// From Resource.cs:73-74
+public Block? DataBlock => GetBlockByType(BlockType.DATA);
+```
+
+Examples of DATA block implementations:
+- **Material** - Shader name, texture references, parameters
+- **Texture** - Image format, dimensions, mipmap data
+- **Model** - Skeleton, mesh references, hitboxes
+- **Sound** - Audio format, sample rate, streaming info
+
+### RERL Block (Resource External Reference List)
+
+<ResponseField name="RERL" type="BlockType">
+  Contains a list of external resource references with unique IDs and file paths.
+</ResponseField>
+
+```csharp
+// From ResourceExtRefList.cs:10-176
+public class ResourceExtRefList : Block
+{
+    public override BlockType Type => BlockType.RERL;
+    
+    public List<ResourceReferenceInfo> ResourceRefInfoList { get; private set; }
+    
+    public class ResourceReferenceInfo
+    {
+        public ulong Id { get; set; }
+        public required string Name { get; set; }
+    }
+}
+```
+
+Example usage:
+
+```csharp
+if (resource.ExternalReferences != null)
+{
+    foreach (var refInfo in resource.ExternalReferences.ResourceRefInfoList)
+    {
+        Console.WriteLine($"ID: 0x{refInfo.Id:X16}");
+        Console.WriteLine($"Path: {refInfo.Name}");
+    }
+}
+```
+
+### REDI Block (Resource Edit Info)
+
+<ResponseField name="REDI" type="BlockType">
+  Contains dependency and compilation metadata for the resource. Legacy format.
+</ResponseField>
+
+```csharp
+// From ResourceEditInfo.cs:11-143
+public class ResourceEditInfo : RawBinary
+{
+    public override BlockType Type => BlockType.REDI;
+    
+    public List<InputDependency> InputDependencies { get; }
+    public List<InputDependency> AdditionalInputDependencies { get; }
+    public List<ArgumentDependency> ArgumentDependencies { get; }
+    public List<SpecialDependency> SpecialDependencies { get; }
+    public List<AdditionalRelatedFile> AdditionalRelatedFiles { get; }
+    public List<string> ChildResourceList { get; }
+    public KVObject SearchableUserData { get; }
+}
+```
+
+The REDI block stores:
+- **Input Dependencies** - Source files used during compilation
+- **Special Dependencies** - Compiler identifiers and versions
+- **Argument Dependencies** - Compilation arguments
+- **Related Files** - Additional files referenced
+- **Child Resources** - Resources generated from this one
+
+### RED2 Block (Resource Edit Info 2)
+
+<ResponseField name="RED2" type="BlockType">
+  An updated version of REDI stored in KV3 format.
+</ResponseField>
+
+RED2 is the newer format for edit info, stored as KeyValues3 instead of the binary REDI format.
+
+### NTRO Block (Resource Introspection Manifest)
+
+<ResponseField name="NTRO" type="BlockType">
+  Contains structure and enum definitions for the resource data. Used for runtime reflection.
+</ResponseField>
+
+<Warning>
+Valve has deprecated NTRO as reported by resourceinfo.exe. Most modern resources use KV3 format instead.
+</Warning>
+
+## Additional Block Types
+
+### Mesh and Geometry Blocks
+
+<ResponseField name="VBIB" type="BlockType">
+  Vertex and Index Buffer Information Block. Contains mesh vertex and index buffer data.
+</ResponseField>
+
+<ResponseField name="MBUF" type="BlockType">
+  Mesh Buffer. An alternative mesh vertex and index buffer format.
+</ResponseField>
+
+<ResponseField name="MVTX" type="BlockType">
+  Mesh Vertex Buffer. Contains vertex buffer data for meshes.
+</ResponseField>
+
+<ResponseField name="MIDX" type="BlockType">
+  Mesh Index Buffer. Contains index buffer data for meshes.
+</ResponseField>
+
+<ResponseField name="MADJ" type="BlockType">
+  Mesh Adjacency Buffer.
+</ResponseField>
+
+<ResponseField name="MDAT" type="BlockType">
+  Mesh Data. Contains mesh geometry including hitbox sets and material groups.
+</ResponseField>
+
+<ResponseField name="MRPH" type="BlockType">
+  Morph Data. Contains morph target (flex/blend shape) data for meshes.
+</ResponseField>
+
+<ResponseField name="TBUF" type="BlockType">
+  Tools Buffer. Contains vertex buffer data for unused attributes (tools only).
+</ResponseField>
+
+### Animation Blocks
+
+<ResponseField name="ANIM" type="BlockType">
+  Animation Data. Contains skeletal animation data.
+</ResponseField>
+
+<ResponseField name="ASEQ" type="BlockType">
+  Animation Sequence. Contains animation sequence group data.
+</ResponseField>
+
+<ResponseField name="AGRP" type="BlockType">
+  Animation Group. Contains animation group resource data.
+</ResponseField>
+
+### Other Specialized Blocks
+
+<ResponseField name="CTRL" type="BlockType">
+  Control Data. Contains configuration and control data in KV3 format for sounds, models, and other resources.
+</ResponseField>
+
+<ResponseField name="PHYS" type="BlockType">
+  Physics Aggregate Data. Contains physics collision meshes and constraint data.
+</ResponseField>
+
+<ResponseField name="VXVS" type="BlockType">
+  Voxel Visibility. Contains voxel-based visibility data.
+</ResponseField>
+
+<ResponseField name="SNAP" type="BlockType">
+  Particle Snapshot. Contains snapshot data for particle systems.
+</ResponseField>
+
+### Panorama Blocks
+
+<ResponseField name="INSG" type="BlockType">
+  Input Signature. Contains shader input layout and signature data for materials.
+</ResponseField>
+
+<ResponseField name="SrMa" type="BlockType">
+  Source Map. Contains source mapping data for Panorama CSS files.
+</ResponseField>
+
+<ResponseField name="LaCo" type="BlockType">
+  Layout Content. Contains parsed VXML AST data for Panorama layouts.
+</ResponseField>
+
+<ResponseField name="STAT" type="BlockType">
+  Statistics. Contains compiled JavaScript metadata (e.g., public methods) for Panorama scripts.
+</ResponseField>
+
+### S&box Blocks
+
+<ResponseField name="SPRV" type="BlockType">
+  SPIR-V Shader. Contains compiled SPIR-V shader bytecode for S&box.
+</ResponseField>
+
+### Additional Blocks
+
+<ResponseField name="FLCI" type="BlockType">
+  File/Line/Column Information. Contains source location data for compiled vdata files.
+</ResponseField>
+
+<ResponseField name="DSTF" type="BlockType">
+  Distance Field. Contains distance field data in KV3 format.
+</ResponseField>
+
+## Block Construction
+
+Blocks are constructed based on their type:
+
+```csharp
+// From Resource.cs:500-533
+private Block ConstructFromType(BlockType blockType)
+{
+    return blockType switch
+    {
+        BlockType.DATA => ConstructResourceType(),
+        BlockType.REDI => new ResourceEditInfo() { Resource = this },
+        BlockType.RED2 => new ResourceEditInfo2() { Resource = this },
+        BlockType.RERL => new ResourceExtRefList() { Resource = this },
+        BlockType.NTRO => new ResourceIntrospectionManifest() { Resource = this },
+        BlockType.VBIB => new VBIB() { Resource = this },
+        BlockType.VXVS => new VoxelVisibility() { Resource = this },
+        BlockType.SNAP => new ParticleSnapshot() { Resource = this },
+        BlockType.MBUF => new MBUF() { Resource = this },
+        BlockType.CTRL => new BinaryKV3(BlockType.CTRL) { Resource = this },
+        BlockType.MDAT => new Mesh(BlockType.MDAT) { Resource = this },
+        // ... many more
+    };
+}
+```
+
+## Accessing Blocks
+
+```csharp
+using var resource = new Resource();
+resource.Read("models/props/crate.vmdl_c");
+
+// Get block by type
+var dataBlock = resource.GetBlockByType(BlockType.DATA);
+var rediBlock = resource.GetBlockByType(BlockType.REDI);
+
+// Check if block exists
+if (resource.ContainsBlockType(BlockType.VBIB))
+{
+    var vbib = resource.GetBlockByType(BlockType.VBIB);
+}
+
+// Iterate all blocks
+foreach (var block in resource.Blocks)
+{
+    Console.WriteLine($"Type: {block.Type}");
+    Console.WriteLine($"Size: {block.Size} bytes");
+    Console.WriteLine($"Offset: 0x{block.Offset:X}");
+}
+```
+
+## Block Reading Order
+
+Blocks are read in a specific order:
+
+```csharp
+// From Resource.cs:257-300
+// 1. NTRO blocks are read first
+if (block.Type is BlockType.NTRO)
+{
+    block.Read(Reader);
+}
+
+// 2. REDI/RED2 blocks are read second (to determine resource type)
+if (block.Type is BlockType.RED2 or BlockType.REDI)
+{
+    block.Read(Reader);
+    EditInfo = (ResourceEditInfo)block;
+    // Determine resource type from compiler identifiers
+}
+
+// 3. All other blocks are read
+foreach (var block in Blocks)
+{
+    if (block.Type is not BlockType.REDI and not BlockType.RED2 and not BlockType.NTRO)
+    {
+        block.Read(Reader);
+    }
+}
+```
+
+This order ensures that the resource type is known before reading the DATA block, allowing proper type-specific deserialization.
+
+## KV3 Detection in DATA Blocks
+
+For unknown resource types, the library automatically detects if the DATA block contains KV3 or KV1 data:
+
+```csharp
+// From Resource.cs:229-248
+if (size >= 4 && blockType == BlockType.DATA && !IsHandledResourceType(ResourceType))
+{
+    Reader.BaseStream.Position = offset;
+    var magic = Reader.ReadUInt32();
+
+    if (BinaryKV3.IsBinaryKV3(magic))
+    {
+        block = new BinaryKV3() { Resource = this };
+    }
+    else if (magic == BinaryKV1.MAGIC)
+    {
+        block = new BinaryKV1() { Resource = this };
+    }
+}
+```
+
+## Example: Working with Multiple Blocks
+
+```csharp
+using var resource = new Resource();
+resource.Read("materials/metal/metal_floor.vmat_c");
+
+// Get material data
+if (resource.DataBlock is Material material)
+{
+    Console.WriteLine($"Shader: {material.ShaderName}");
+}
+
+// Get external references
+if (resource.ExternalReferences != null)
+{
+    Console.WriteLine("\nTextures:");
+    foreach (var refInfo in resource.ExternalReferences.ResourceRefInfoList)
+    {
+        if (refInfo.Name.Contains(".vtex"))
+        {
+            Console.WriteLine($"  {refInfo.Name}");
+        }
+    }
+}
+
+// Get compilation info
+if (resource.EditInfo != null)
+{
+    Console.WriteLine("\nInput Files:");
+    foreach (var dep in resource.EditInfo.InputDependencies)
+    {
+        Console.WriteLine($"  {dep.ContentRelativeFilename}");
+    }
+}
+```
+
+## Block Serialization
+
+Some blocks support serialization back to binary format:
+
+```csharp
+using var outputStream = new FileStream("output.vmat_c", FileMode.Create);
+resource.Serialize(outputStream);
+```
+
+<Warning>
+Not all blocks support serialization. Attempting to serialize unsupported blocks will throw `NotImplementedException`.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Binary KeyValues" icon="brackets-curly" href="/concepts/binary-keyvalues">
+    Learn about KV1 and KV3 data formats used in blocks
+  </Card>
+  <Card title="Resource Files" icon="file-code" href="/concepts/resource-files">
+    Understand the overall resource file structure
+  </Card>
+</CardGroup>

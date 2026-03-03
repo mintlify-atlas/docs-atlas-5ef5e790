@@ -1,0 +1,410 @@
+---
+title: Command Reference
+description: Complete list of all CLI command-line options and flags
+---
+
+This page documents all available command-line options for the ValveResourceFormat CLI tool.
+
+## Input Options
+
+Options for specifying input files and filters.
+
+### `--input` (or `-i`)
+
+**Required.** Input file or folder to be processed.
+
+<CodeGroup>
+```bash Single File
+./Source2Viewer-CLI -i "file.vtex_c"
+```
+
+```bash Folder
+./Source2Viewer-CLI -i "materials/" --recursive
+```
+
+```bash VPK Archive
+./Source2Viewer-CLI -i "pak01_dir.vpk"
+```
+</CodeGroup>
+
+With no additional arguments, displays a summary of the input:
+- Resource type and version
+- File size
+- External references
+- Resource blocks
+
+<Note>
+For `--stats` mode only: Use `--input "steam"` to automatically scan all Steam library folders for Source 2 files.
+</Note>
+
+### `--recursive`
+
+Scan all subdirectories when the input is a folder.
+
+```bash
+./Source2Viewer-CLI -i "game/materials" --recursive -o "exported" -d
+```
+
+<Warning>
+Cannot be used when input is a single file. Pass a folder path instead.
+</Warning>
+
+### `--recursive_vpk`
+
+Recurse into VPK archives when using `--recursive`. Must be specified with `--recursive`.
+
+```bash
+./Source2Viewer-CLI -i "game_folder" --recursive --recursive_vpk --stats
+```
+
+### `--vpk_extensions` (or `-e`)
+
+Filter files by extension(s). Comma-separated list.
+
+```bash
+# Extract only Panorama files
+./Source2Viewer-CLI -i "pak01_dir.vpk" -e "vxml_c,vcss_c,vjs_c" -o "ui" -d
+```
+
+```bash
+# Extract only textures
+./Source2Viewer-CLI -i "pak01_dir.vpk" -e "vtex_c" -o "textures" -d
+```
+
+### `--vpk_filepath` (or `-f`)
+
+Filter files by path. Supports comma-separated values.
+
+```bash
+# Extract specific folders
+./Source2Viewer-CLI -i "pak01_dir.vpk" -f "panorama/,sounds/" -o "exported"
+```
+
+```bash
+# Extract a specific file
+./Source2Viewer-CLI -i "pak01_dir.vpk" -f "scripts/items/items_game.txt" -o "exported"
+```
+
+## Output Options
+
+Options for controlling output and decompilation.
+
+### `--output` (or `-o`)
+
+Output path to write to. If input is a folder or VPK, this should be a folder.
+
+```bash
+# Single file output
+./Source2Viewer-CLI -i "texture.vtex_c" -o "texture.png"
+```
+
+```bash
+# Folder output
+./Source2Viewer-CLI -i "pak01_dir.vpk" -o "extracted_files"
+```
+
+### `--vpk_decompile` (or `-d`)
+
+Decompile supported resource files during extraction.
+
+```bash
+./Source2Viewer-CLI -i "pak01_dir.vpk" -o "decompiled" -d
+```
+
+Without `-d`, files are extracted in their compiled binary format. With `-d`:
+- Textures are converted to PNG
+- Materials, maps, etc. are decompiled to KeyValues text format
+- Panorama files are decompiled to readable XML/CSS/JS
+- Shaders are decompiled to source code
+
+<Note>
+The `--gltf_export_format` option also requires `-d` to be specified.
+</Note>
+
+### `--texture_decode_flags`
+
+Decompile textures with specified decode flags.
+
+**Options:** `none`, `auto`, `foceldr`
+
+**Default:** `auto`
+
+```bash
+./Source2Viewer-CLI -i "texture.vtex_c" -o "output.png" --texture_decode_flags none
+```
+
+### `--all` (or `-a`)
+
+Print the content of each resource block in the file.
+
+```bash
+./Source2Viewer-CLI -i "file.vmdl_c" --all
+```
+
+Useful for inspecting file structure without extraction.
+
+### `--block` (or `-b`)
+
+Print the content of a specific block.
+
+**Valid blocks:** `DATA`, `RERL`, `REDI`, `NTRO`, `VBIB`, `CTRL`, etc.
+
+```bash
+# View only the DATA block
+./Source2Viewer-CLI -i "file.vmdl_c" --block DATA
+```
+
+```bash
+# View external references
+./Source2Viewer-CLI -i "file.vmdl_c" --block RERL
+```
+
+### `--vpk_list` (or `-l`)
+
+List all resources in a VPK. File extension and path filters apply.
+
+```bash
+# List all files
+./Source2Viewer-CLI -i "pak01_dir.vpk" --vpk_list
+```
+
+```bash
+# List only textures in materials folder
+./Source2Viewer-CLI -i "pak01_dir.vpk" --vpk_list -e "vtex_c" -f "materials/"
+```
+
+Output format: `file/path.ext CRC:xxxxxxxxxx size:12345`
+
+### `--vpk_dir`
+
+Print a list of files in a VPK with metadata (archive index, CRC, size).
+
+```bash
+./Source2Viewer-CLI -i "pak01_dir.vpk" --vpk_dir
+```
+
+### `--vpk_cache`
+
+Use cached VPK manifest to track updates. Only changed files are written to disk.
+
+```bash
+./Source2Viewer-CLI -i "pak01_dir.vpk" -o "exported" -d --vpk_cache
+```
+
+Creates a `.manifest.txt` file next to the VPK. The cache is automatically invalidated if the decompiler version changes.
+
+**Benefits:**
+- Dramatically faster on subsequent runs
+- Only processes files that changed since last export
+- Ideal for keeping an export folder in sync with a VPK
+
+### `--vpk_verify`
+
+Verify VPK checksums and signatures.
+
+```bash
+./Source2Viewer-CLI -i "pak01_dir.vpk" --vpk_verify
+```
+
+This validates:
+- Package signature (if present)
+- File hashes
+- Chunk hashes (for VPKv2)
+- Individual file checksums
+
+## glTF Export Options
+
+Options for exporting models to glTF/GLB format.
+
+### `--gltf_export_format`
+
+Export meshes/models in glTF format. Requires `-d`.
+
+**Valid values:** `gltf` (text + separate resources) or `glb` (binary, single file)
+
+```bash
+# Export to GLB (recommended)
+./Source2Viewer-CLI -i "model.vmdl_c" -o "model.glb" -d --gltf_export_format glb
+```
+
+```bash
+# Export to glTF with separate files
+./Source2Viewer-CLI -i "model.vmdl_c" -o "model.gltf" -d --gltf_export_format gltf
+```
+
+### `--gltf_export_materials`
+
+Export materials during glTF export.
+
+```bash
+./Source2Viewer-CLI -i "model.vmdl_c" -o "model.glb" -d \
+  --gltf_export_format glb \
+  --gltf_export_materials
+```
+
+### `--gltf_export_animations`
+
+Export animations during glTF export.
+
+```bash
+./Source2Viewer-CLI -i "character.vmdl_c" -o "character.glb" -d \
+  --gltf_export_format glb \
+  --gltf_export_animations
+```
+
+### `--gltf_animation_list`
+
+Comma-separated list of animations to include. Requires `--gltf_export_animations`.
+
+```bash
+./Source2Viewer-CLI -i "character.vmdl_c" -o "character.glb" -d \
+  --gltf_export_format glb \
+  --gltf_export_animations \
+  --gltf_animation_list "idle,walk,run"
+```
+
+By default, all animations are included.
+
+### `--gltf_mesh_list`
+
+Comma-separated list of meshes to include in the glTF export.
+
+```bash
+./Source2Viewer-CLI -i "model.vmdl_c" -o "model.glb" -d \
+  --gltf_export_format glb \
+  --gltf_mesh_list "mesh1,mesh2"
+```
+
+By default, all meshes are included.
+
+### `--gltf_textures_adapt`
+
+Perform glTF spec adaptations on textures (e.g., split metallic maps).
+
+```bash
+./Source2Viewer-CLI -i "model.vmdl_c" -o "model.glb" -d \
+  --gltf_export_format glb \
+  --gltf_export_materials \
+  --gltf_textures_adapt
+```
+
+### `--gltf_export_extras`
+
+Export additional mesh properties into glTF extras field.
+
+```bash
+./Source2Viewer-CLI -i "model.vmdl_c" -o "model.glb" -d \
+  --gltf_export_format glb \
+  --gltf_export_extras
+```
+
+## Other Options
+
+### `--threads`
+
+Number of concurrent threads for parallel processing. Default: `1`
+
+```bash
+# Use 8 threads for faster processing
+./Source2Viewer-CLI -i "game/" --recursive -o "exported" -d --threads 8
+```
+
+<Note>
+Ideal thread count is typically your CPU core count. Higher values provide diminishing returns.
+</Note>
+
+### `--tools_asset_info_short`
+
+Print only file paths for `tools_asset_info` files.
+
+```bash
+./Source2Viewer-CLI -i "game.vaif" --tools_asset_info_short
+```
+
+### `--version`
+
+Display version information.
+
+```bash
+./Source2Viewer-CLI --version
+```
+
+### `--help`
+
+Display help information and usage.
+
+```bash
+./Source2Viewer-CLI --help
+```
+
+## Developer Options
+
+These options are primarily for VRF developers and advanced users.
+
+### `--stats`
+
+Collect statistics on all input files.
+
+```bash
+# Scan current folder
+./Source2Viewer-CLI -i "game/" --recursive --stats
+```
+
+```bash
+# Scan all Steam libraries
+./Source2Viewer-CLI -i "steam" --stats
+```
+
+```bash
+# Scan multiple folders
+./Source2Viewer-CLI -i "path1,path2,path3" --stats
+```
+
+<Warning>
+Cannot be used with `--output`.
+</Warning>
+
+### `--stats_with_loader`
+
+When using `--stats`, use GameFileLoader to load dependencies. Requires `--stats`.
+
+<Warning>
+Cannot be used with `--threads` greater than 1.
+</Warning>
+
+### `--stats_print_files`
+
+When using `--stats`, print example file names for each statistic.
+
+### `--stats_unique_deps`
+
+When using `--stats`, print all unique dependencies that were found.
+
+### `--stats_particles`
+
+When using `--stats`, collect particle operators, renderers, emitters, and initializers.
+
+### `--stats_vbib`
+
+When using `--stats`, collect vertex attributes.
+
+### `--gltf_test`
+
+When using `--stats`, test glTF export code path for every supported file.
+
+### `--dump_unknown_entity_keys`
+
+When using `--stats`, save all unknown entity key hashes to `unknown_keys.txt`.
+
+## Exit Codes
+
+The CLI returns the following exit codes:
+
+- `0` - Success
+- `1` - Error (invalid arguments, file not found, processing error, etc.)
+
+## Notes
+
+<Note>
+When you modify command-line arguments in the source code, remember to update the `command-line.md` documentation file.
+</Note>

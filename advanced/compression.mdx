@@ -1,0 +1,470 @@
+---
+title: Compression Formats
+description: Working with LZ4, LZMA, and Zstd compression in Source 2 resources
+---
+
+Source 2 resources use multiple compression formats for efficient storage and fast decompression. This guide covers the compression formats used throughout ValveResourceFormat.
+
+## Compression Overview
+
+Source 2 uses three main compression algorithms:
+
+- **Block Compression**: Custom LZ-style format for small blocks
+- **LZ4**: Fast decompression for runtime data
+- **Zstandard (Zstd)**: High compression ratio for shaders and KV3 data
+
+## Block Compression
+
+Valve's custom block compression format provides fast decompression for small data blocks.
+
+### Compression Detection
+
+```csharp BlockCompress.cs:18-30
+public static CompressionInfo GetDecompressedSize(BinaryReader reader)
+{
+    var decompressedSize = reader.ReadUInt32();
+
+    // Valve sets fourth byte in the compressed buffer to 0x80 to indicate
+    // that the data is uncompressed, 0x80000000 is 2147483648 which
+    // automatically makes any number higher than max signed 32-bit integer.
+    if (decompressedSize > int.MaxValue)
+    {
+        return new(false, (int)(decompressedSize & 0x7FFFFFFF));
+    }
+
+    return new(true, (int)decompressedSize);
+}
+```
+
+### Decompression
+
+```csharp
+using ValveResourceFormat.Compression;
+
+// Read compression info
+var info = BlockCompress.GetDecompressedSize(reader);
+
+// Allocate output buffer
+var output = new byte[info.Size];
+
+// Decompress
+BlockCompress.FastDecompress(info, reader, output);
+```
+
+### Algorithm Details
+
+The block compression uses a 16-bit mask system:
+
+```csharp BlockCompress.cs:46-86
+var position = 0;
+ushort blockMask = 0;
+var i = 0;
+
+while (position < info.Size)
+{
+    if (i == 0)
+    {
+        blockMask = reader.ReadUInt16();
+        i = 16;
+    }
+
+    if ((blockMask & 1) > 0)
+    {
+        // Copy from previous data (LZ-style backreference)
+        var offsetSize = reader.ReadUInt16();
+        var offset = (offsetSize >> 4) + 1;
+        var size = (offsetSize & 0xF) + 3;
+        var positionSource = position - offset;
+
+        if (offset == 1)
+        {
+            // RLE: repeat same byte
+            while (size-- > 0)
+            {
+                result[position++] = result[positionSource];
+            }
+        }
+        else
+        {
+            // Copy sequence
+            while (size-- > 0)
+            {
+                result[position++] = result[positionSource++];
+            }
+        }
+    }
+    else
+    {
+        // Literal byte
+        result[position++] = reader.ReadByte();
+    }
+
+    blockMask >>= 1;
+    i--;
+}
+```
+
+## LZ4 Compression
+
+LZ4 provides extremely fast decompression and is used throughout Source 2 resources.
+
+### Binary KV3 Decompression
+
+```csharp BinaryKV3.cs:159-179
+private static void DecompressLZ4(BinaryReader reader, Span<byte> output, int compressedSize)
+{
+    var inputBuf = ArrayPool<byte>.Shared.Rent(compressedSize);
+
+    try
+    {
+        var input = inputBuf.AsSpan(0, compressedSize);
+        reader.Read(input);
+
+        var written = LZ4Codec.Decode(input, output);
+
+        if (written != output.Length)
+        {
+            throw new InvalidDataException(
+                $"Failed to decompress LZ4 (expected {output.Length} bytes, got {written})"
+            );
+        }
+    }
+    finally
+    {
+        ArrayPool<byte>.Shared.Return(inputBuf);
+    }
+}
+```
+
+### Frame-Based Decompression
+
+LZ4 chain decoder for streaming data:
+
+```csharp BinaryKV3.cs:597-627
+using var lz4decoder = new LZ4ChainDecoder(compressionFrameSize, 0);
+
+var decompressedOffset = 0;
+
+while (bufferWithBinaryBlobSizes.Count > 0)
+{
+    var compressedBlockLength = MemoryMarshal.Read<ushort>(bufferWithBinaryBlobSizes);
+    bufferWithBinaryBlobSizes = bufferWithBinaryBlobSizes[sizeof(ushort)..];
+
+    var inputBuf = ArrayPool<byte>.Shared.Rent(compressedBlockLength);
+
+    try
+    {
+        var decodedFrameSize = decompressedOffset + compressionFrameSize > sizeBinaryBlobsBytes 
+            ? sizeBinaryBlobsBytes - decompressedOffset 
+            : compressionFrameSize;
+        var output = context.BinaryBlobs.AsSpan(decompressedOffset, decodedFrameSize);
+
+        var input = inputBuf.AsSpan(0, compressedBlockLength);
+        reader.Read(input);
+
+        if (!lz4decoder.DecodeAndDrain(input, output, out var decoded) || decoded < 1)
+        {
+            throw new InvalidOperationException("LZ4 decode drain failed");
+        }
+
+        decompressedOffset += decoded;
+    }
+    finally
+    {
+        ArrayPool<byte>.Shared.Return(inputBuf);
+    }
+}
+```
+
+### Usage Example
+
+```csharp
+using K4os.Compression.LZ4;
+using System.Buffers;
+
+public static byte[] DecompressLZ4(byte[] compressed, int decompressedSize)
+{
+    var output = new byte[decompressedSize];
+    var decoded = LZ4Codec.Decode(compressed, output);
+    
+    if (decoded != decompressedSize)
+    {
+        throw new InvalidDataException($"LZ4 decompression failed");
+    }
+    
+    return output;
+}
+```
+
+## Zstandard (Zstd)
+
+Zstd provides excellent compression ratios and is used for shaders and KV3 data.
+
+### Dictionary-Based Compression
+
+Source 2 shaders use Zstd dictionaries for better compression:
+
+```csharp ZstdDictionary.cs:89-105
+public static byte[] GetDictionary_2bc2fa87()
+{
+    lock (zstdDictLock)
+    {
+        if (zstdDict_2bc2fa87 != null)
+        {
+            return zstdDict_2bc2fa87;
+        }
+
+        using var stream = Assembly.GetExecutingAssembly()
+            .GetManifestResourceStream("ValveResourceFormat.Utils.vfx_zstd_2bc2fa87.bin");
+        Debug.Assert(stream != null);
+
+        zstdDict_2bc2fa87 = new byte[0x10000];
+        stream.ReadExactly(zstdDict_2bc2fa87, 0, zstdDict_2bc2fa87.Length);
+
+        return zstdDict_2bc2fa87;
+    }
+}
+```
+
+### Dictionary IDs
+
+Two dictionaries are currently used:
+
+- **0x2bc2fa87**: Original shader dictionary
+- **0x255df362**: Added in 2025
+
+### Decompression
+
+```csharp BinaryKV3.cs:181-199
+private static void DecompressZSTD(
+    ZstdSharp.Decompressor zstdDecompressor, 
+    BinaryReader reader, 
+    Span<byte> output, 
+    int compressedSize)
+{
+    var inputBuf = ArrayPool<byte>.Shared.Rent(compressedSize);
+
+    try
+    {
+        var input = inputBuf.AsSpan(0, compressedSize);
+        reader.Read(input);
+
+        if (!zstdDecompressor.TryUnwrap(input, output, out var written) || output.Length != written)
+        {
+            throw new InvalidDataException(
+                $"Failed to decompress ZSTD (expected {output.Length} bytes, got {written})"
+            );
+        }
+    }
+    finally
+    {
+        ArrayPool<byte>.Shared.Return(inputBuf);
+    }
+}
+```
+
+### Usage Example
+
+```csharp
+using ZstdSharp;
+using System.Buffers;
+
+public static byte[] DecompressZstd(byte[] compressed, int decompressedSize)
+{
+    using var decompressor = new Decompressor();
+    var output = new byte[decompressedSize];
+    
+    if (!decompressor.TryUnwrap(compressed, output, out var written))
+    {
+        throw new InvalidDataException("Zstd decompression failed");
+    }
+    
+    return output;
+}
+```
+
+### With Dictionary
+
+```csharp
+using ZstdSharp;
+
+public static byte[] DecompressZstdWithDict(
+    byte[] compressed, 
+    int decompressedSize, 
+    uint dictionaryId)
+{
+    var dictionary = dictionaryId switch
+    {
+        0x2bc2fa87 => ZstdDictionary.GetDictionary_2bc2fa87(),
+        0x255df362 => ZstdDictionary.GetDictionary_255df362(),
+        _ => throw new ArgumentException($"Unknown dictionary ID: 0x{dictionaryId:X8}")
+    };
+    
+    using var decompressor = new Decompressor();
+    var output = new byte[decompressedSize];
+    
+    if (!decompressor.TryUnwrap(compressed, output, out var written, dictionary))
+    {
+        throw new InvalidDataException("Zstd decompression failed");
+    }
+    
+    return output;
+}
+```
+
+## Compression Method Detection
+
+Binary KV3 files specify compression method:
+
+```csharp BinaryKV3.cs:210-248
+var compressionMethod = reader.ReadUInt32();
+ushort compressionDictionaryId = 0;
+ushort compressionFrameSize = 0;
+
+if (version == 1)
+{
+    // Version 1 did not have extra compression data
+    countBytes1 = reader.ReadInt32();
+    // ...
+}
+else
+{
+    compressionDictionaryId = reader.ReadUInt16();
+    compressionFrameSize = reader.ReadUInt16();
+    // ...
+}
+```
+
+Compression methods:
+- **0**: Uncompressed
+- **1**: LZ4
+- **2**: Zstd
+
+### Detection Example
+
+```csharp
+var compressionMethod = reader.ReadUInt32();
+
+switch (compressionMethod)
+{
+    case 0:
+        Console.WriteLine("Uncompressed");
+        reader.Read(buffer);
+        break;
+        
+    case 1:
+        Console.WriteLine("LZ4 compressed");
+        DecompressLZ4(reader, buffer, compressedSize);
+        break;
+        
+    case 2:
+        Console.WriteLine("Zstd compressed");
+        using var decompressor = new Decompressor();
+        DecompressZSTD(decompressor, reader, buffer, compressedSize);
+        break;
+        
+    default:
+        throw new InvalidDataException($"Unknown compression method: {compressionMethod}");
+}
+```
+
+## Performance Considerations
+
+### ArrayPool Usage
+
+Always use `ArrayPool` for temporary buffers:
+
+```csharp
+var buffer = ArrayPool<byte>.Shared.Rent(size);
+try
+{
+    // Use buffer
+    var span = buffer.AsSpan(0, size);
+    Decompress(span);
+}
+finally
+{
+    ArrayPool<byte>.Shared.Return(buffer);
+}
+```
+
+### Span\<T\> for zero-copy
+
+Use `Span<T>` to avoid unnecessary copies:
+
+```csharp
+public static void DecompressInPlace(Span<byte> input, Span<byte> output)
+{
+    // No copying, operates directly on memory
+    LZ4Codec.Decode(input, output);
+}
+```
+
+### Reuse Decompressors
+
+```csharp
+public class CompressionContext : IDisposable
+{
+    private readonly Decompressor zstdDecompressor = new();
+    
+    public void DecompressMultiple(List<byte[]> compressedBlocks)
+    {
+        foreach (var block in compressedBlocks)
+        {
+            // Reuse decompressor instance
+            var output = new byte[GetDecompressedSize(block)];
+            zstdDecompressor.TryUnwrap(block, output, out _);
+        }
+    }
+    
+    public void Dispose()
+    {
+        zstdDecompressor?.Dispose();
+    }
+}
+```
+
+## Error Handling
+
+```csharp
+public static byte[] SafeDecompress(byte[] compressed, int expectedSize)
+{
+    try
+    {
+        var output = new byte[expectedSize];
+        var written = LZ4Codec.Decode(compressed, output);
+        
+        if (written != expectedSize)
+        {
+            throw new InvalidDataException(
+                $"Size mismatch: expected {expectedSize}, got {written}"
+            );
+        }
+        
+        return output;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Decompression failed: {ex.Message}");
+        throw;
+    }
+}
+```
+
+## Compression Format Summary
+
+| Format | Use Case | Speed | Ratio | Frame Size |
+|--------|----------|-------|-------|------------|
+| Block Compress | Small blocks | Fast | Medium | N/A |
+| LZ4 | Runtime data, KV3 | Very Fast | Good | 16KB |
+| Zstd | Shaders, archives | Fast | Excellent | Variable |
+
+## Best Practices
+
+1. **Always check decompressed size** before allocating buffers
+2. **Use ArrayPool** for temporary allocations
+3. **Reuse decompressor instances** when processing multiple blocks
+4. **Handle compression errors** gracefully
+5. **Verify output size** matches expected size
+6. **Use Span\<T\>** for zero-copy operations
+7. **Return pooled buffers** in `finally` blocks

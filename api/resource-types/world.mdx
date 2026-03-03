@@ -1,0 +1,69 @@
+---
+title: World
+description: API reference for the World resource type class
+---
+
+The `World` class represents a world resource.
+
+## Methods
+
+### GetEntityLumpNames
+
+Gets the entity lump names.
+
+<ResponseField name="returns" type="IReadOnlyCollection<string>">
+  Collection of entity lump names.
+</ResponseField>
+
+### GetWorldLightingInfo
+
+Gets the world lighting information.
+
+<ResponseField name="returns" type="KVObject">
+  KeyValues object containing world lighting data.
+</ResponseField>
+
+### GetWorldNodeNames
+
+Gets the world node names.
+
+<ResponseField name="returns" type="IReadOnlyCollection<string>">
+  Collection of world node names.
+</ResponseField>
+
+## Usage Example
+
+```csharp
+var resource = new Resource();
+var world = resource.DataBlock as World;
+
+if (world != null)
+{
+    // Get entity lumps
+    var entityLumps = world.GetEntityLumpNames();
+    Console.WriteLine($"Entity lumps: {entityLumps.Count}");
+    foreach (var lumpName in entityLumps)
+    {
+        Console.WriteLine($"  - {lumpName}");
+    }
+    
+    // Get world nodes
+    var worldNodes = world.GetWorldNodeNames();
+    Console.WriteLine($"World nodes: {worldNodes.Count}");
+    foreach (var nodeName in worldNodes)
+    {
+        Console.WriteLine($"  - {nodeName}");
+    }
+    
+    // Get lighting info
+    var lightingInfo = world.GetWorldLightingInfo();
+    if (lightingInfo != null)
+    {
+        Console.WriteLine("World lighting information:");
+        foreach (var property in lightingInfo.Properties)
+        {
+            Console.WriteLine($"  {property.Key}: {property.Value}");
+        }
+    }
+}
+```

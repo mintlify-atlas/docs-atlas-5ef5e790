@@ -1,0 +1,371 @@
+---
+title: Asset Viewer
+description: View and interact with Source 2 models, textures, maps, audio, and other game assets
+---
+
+The Asset Viewer automatically displays the appropriate viewer for each file type when you open assets in Source 2 Viewer.
+
+## Viewer Types
+
+Source 2 Viewer includes specialized viewers for different asset categories:
+
+<CardGroup cols={2}>
+  <Card title="3D Viewers" icon="cube">
+    Models, maps, particles, navigation meshes, and physics
+  </Card>
+  <Card title="Texture Viewer" icon="image">
+    Textures with channel controls and format options
+  </Card>
+  <Card title="Audio Player" icon="music">
+    Sound files with playback and waveform display
+  </Card>
+  <Card title="Text Viewer" icon="file-code">
+    Scripts, keyvalues, and decompiled resources
+  </Card>
+</CardGroup>
+
+## 3D Viewers
+
+### Model Viewer
+
+View 3D models (`.vmdl`, `.vmesh`) with full material and animation support.
+
+#### Features
+
+- **Interactive camera** - WASD movement, mouse look, scroll zoom
+- **Material rendering** - PBR shaders with proper lighting
+- **Animation playback** - Timeline controls for animated models
+- **Skeleton display** - Toggle bone visualization
+- **Physics mesh** - View collision geometry
+- **Wireframe mode** - Toggle polygon edges
+- **Grid and axes** - Reference guides for orientation
+
+#### Controls
+
+| Control | Action |
+|---------|--------|
+| **Left Mouse + Drag** | Rotate camera around model |
+| **Right Mouse + Drag** | Pan camera |
+| **Scroll Wheel** | Zoom in/out |
+| **W/A/S/D** | Move camera forward/left/backward/right |
+| **Q/E** | Move camera down/up |
+| **F** | Frame model in view |
+| **Space** | Play/pause animation |
+
+#### Sidebar Controls
+
+- **Animations** - Dropdown to select available animations
+- **Playback Speed** - Slider to adjust animation speed
+- **Show Skeleton** - Checkbox to display bones
+- **Show Physics** - Checkbox to display collision mesh
+- **Wireframe** - Toggle wireframe rendering
+- **Mesh Statistics** - View vertex and triangle counts
+
+<Tip>
+Press `F` to automatically frame the model in the viewport, centering the camera on the asset.
+</Tip>
+
+### Map Viewer
+
+View full Source 2 maps (`.vmap`, `.vwrld`, `.vwnod`) with all entities and geometry.
+
+#### Features
+
+- **Full map rendering** - Complete level with lighting and materials
+- **Entity inspection** - Click entities to view properties
+- **Layer toggles** - Show/hide different map elements
+- **Navigation mesh** - Visualize AI pathfinding data
+- **Saved cameras** - Bookmark and return to specific positions
+- **Environment lighting** - Accurate ambient and directional lighting
+- **Performance stats** - FPS counter and rendering metrics
+
+#### Camera Controls
+
+Same as Model Viewer, with additional features:
+
+- **Save Camera Position** - Bookmark current view
+- **Load Camera Position** - Return to saved viewpoint
+- **Clear Saved Positions** - Remove camera bookmarks
+
+#### Entity Inspector
+
+1. Click on an entity in the map
+2. The Entity Info panel displays:
+   - Entity class name
+   - Position and rotation
+   - All key-value properties
+   - Target connections
+
+### Particle Viewer
+
+View and simulate particle systems (`.vpcf`).
+
+#### Features
+
+- **Real-time simulation** - Accurate particle behavior
+- **Emitter visualization** - Show spawn points and volumes
+- **Timeline scrubbing** - Jump to any point in the effect
+- **Particle count** - Display active particle statistics
+- **Loop controls** - Toggle effect looping
+- **Reset simulation** - Restart from beginning
+
+### Navigation Mesh Viewer
+
+Visualize AI navigation data (`.vnav`).
+
+#### Features
+
+- **Nav mesh polygons** - Color-coded walkable areas
+- **Connection lines** - Show nav mesh connectivity
+- **Attribute display** - View area properties (crouch, jump, etc.)
+- **Area selection** - Click polygons to inspect properties
+
+### Physics Mesh Viewer
+
+View collision geometry (`.vphys`).
+
+#### Features
+
+- **Convex hulls** - Display collision shapes
+- **Mass properties** - Show center of mass and inertia
+- **Wireframe mode** - View collision mesh structure
+
+## Texture Viewer
+
+View and analyze textures (`.vtex`) with advanced display options.
+
+### Channel Controls
+
+<CardGroup cols={2}>
+  <Card title="RGB" icon="palette">
+    Display full color image
+  </Card>
+  <Card title="R / G / B" icon="circle">
+    Isolate individual color channels
+  </Card>
+  <Card title="Alpha" icon="droplet">
+    View transparency channel
+  </Card>
+  <Card title="Grayscale" icon="adjust">
+    Convert to luminance
+  </Card>
+</CardGroup>
+
+### Display Options
+
+- **Zoom Controls** - Zoom in/out with mouse wheel or buttons
+- **Pan** - Click and drag to move texture
+- **Fit to Window** - Auto-scale texture to fit viewport
+- **Actual Size** - Display at 1:1 pixel ratio
+- **Alpha Blending** - Toggle alpha transparency
+- **Background Color** - Change background for alpha textures
+
+### Special Formats
+
+#### Cubemaps
+
+- **Unwrapped view** - See all 6 faces in cross layout
+- **Face selection** - View individual cubemap faces
+- **Environment preview** - 3D sphere preview (if available)
+
+#### HDR Textures
+
+- **Exposure control** - Adjust brightness for HDR images
+- **Tone mapping** - View with different tone curves
+- **Range display** - Show over/under exposed areas
+
+#### Normal Maps
+
+- **Normal visualization** - Color-coded normal directions
+- **Bump preview** - 3D preview of surface detail
+- **Tangent space** - Display in local coordinates
+
+### Mipmap Inspection
+
+- **Mipmap selector** - Dropdown to choose LOD level
+- **Size display** - Shows dimensions of each mip level
+- **Storage info** - Display format and compression
+
+### Texture Information
+
+The info panel displays:
+
+- **Dimensions** - Width x Height in pixels
+- **Format** - Compression format (DXT1, BC7, etc.)
+- **Mipmap Levels** - Number of LOD levels
+- **Flags** - Special attributes (sRGB, normal map, etc.)
+- **File Size** - Compressed and uncompressed sizes
+
+## Audio Player
+
+Play sound files (`.vsnd`, `.wav`, `.mp3`) with visualization.
+
+### Playback Controls
+
+<CardGroup cols={2}>
+  <Card title="Play/Pause" icon="play">
+    Start or pause audio playback
+  </Card>
+  <Card title="Stop" icon="stop">
+    Stop playback and return to start
+  </Card>
+  <Card title="Seek" icon="forward">
+    Drag timeline to jump to position
+  </Card>
+  <Card title="Volume" icon="volume-high">
+    Adjust playback volume
+  </Card>
+</CardGroup>
+
+### Features
+
+- **Waveform display** - Visual representation of audio
+- **Playback position** - Timeline with current time
+- **Duration display** - Total length and current position
+- **Loop toggle** - Enable continuous playback
+- **Format information** - Sample rate, channels, bit depth
+
+### Audio Information
+
+The info panel displays:
+
+- **Sample Rate** - Audio frequency (44.1kHz, etc.)
+- **Channels** - Mono, Stereo, or Surround
+- **Bit Depth** - Resolution (16-bit, 24-bit, etc.)
+- **Duration** - Total length in seconds
+- **Format** - Codec and compression type
+
+## Text Viewers
+
+### Code/Script Viewer
+
+View text files with syntax highlighting:
+
+- **Panorama Scripts** (`.vjs`, `.vts`) - JavaScript/TypeScript syntax
+- **Panorama Layouts** (`.vxml`) - XML syntax highlighting
+- **Panorama Styles** (`.vcss`) - CSS syntax highlighting
+- **Decompiled resources** - Formatted KeyValues output
+
+#### Features
+
+- **Syntax highlighting** - Color-coded by language
+- **Line numbers** - Easy reference for code lines
+- **Word wrap** - Toggle line wrapping
+- **Font size** - Adjust text size in settings
+- **Copy** - Select and copy text to clipboard
+
+### KeyValues Viewer
+
+View KeyValues files (KV1, KV2, KV3) in formatted text:
+
+- **Hierarchical display** - Nested structure with indentation
+- **Type annotations** - Value types shown for KV3
+- **Binary KV support** - Automatically parsed and displayed
+- **Copy values** - Select and copy specific entries
+
+### Hex Viewer
+
+View raw binary data for any file:
+
+- **Hex display** - Byte values in hexadecimal
+- **ASCII preview** - Readable text representation
+- **Address column** - Byte offsets
+- **Byte grouping** - Organized for readability
+- **Search** - Find byte patterns or text strings
+
+## Resource Inspector
+
+All compiled Source 2 resources (files with `_c` suffix) include additional data blocks:
+
+### Data Blocks
+
+Select from dropdown to inspect:
+
+- **DATA** - Main resource content
+- **RERL** - External resource references
+- **NTRO** - Introspection data
+- **VBIB** - Vertex and index buffers
+- **MBUF** - Morph buffers
+- **CTRL** - Animation controls
+- **ASEQ** - Animation sequences
+
+Each block displays in the appropriate viewer format (3D, text, or hex).
+
+### Resource Information
+
+- **Version** - Resource format version
+- **File Size** - Total and per-block sizes
+- **Dependencies** - Referenced external files
+- **Introspection** - Data structure details
+
+## Shader Viewer
+
+View compiled shader files (`.vcs`).
+
+### Features
+
+- **SPIRV disassembly** - Decompiled shader code
+- **Feature flags** - Shader compilation options
+- **Static combos** - Shader variations and permutations
+- **Dynamic combos** - Runtime shader branches
+- **Vertex/Pixel stages** - Separate display for each stage
+
+## Viewer Settings
+
+Configure viewer behavior in [Settings](/gui/settings):
+
+- **Quick Preview** - Auto-load files on selection
+- **Auto-play Sounds** - Automatically play audio on open
+- **Max Texture Size** - Limit texture resolution for performance
+- **MSAA Samples** - Anti-aliasing quality
+- **Field of View** - 3D camera FOV
+- **Display FPS** - Show performance counter
+
+## Export from Viewers
+
+Most viewers include export buttons:
+
+- **3D Viewers** - Export to glTF 2.0 format
+- **Texture Viewer** - Export to PNG, TGA, DDS, JPG, TIF
+- **Audio Player** - Export to WAV or MP3
+- **Text Viewer** - Save as text file
+
+<Tip>
+Right-click in the viewer for additional export and display options.
+</Tip>
+
+## Keyboard Shortcuts
+
+### Common Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Space` | Play/pause animation or audio |
+| `F` | Frame/focus selected object |
+| `Ctrl+E` | Export current asset |
+| `Ctrl++` | Zoom in |
+| `Ctrl+-` | Zoom out |
+| `Ctrl+0` | Reset zoom |
+
+### 3D Viewer Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `W/A/S/D` | Move camera |
+| `Q/E` | Move camera up/down |
+| `Shift` | Move faster |
+| `1` | Toggle wireframe |
+| `2` | Toggle skeleton |
+| `3` | Toggle physics mesh |
+| `G` | Toggle grid |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="VPK Browser" icon="folder-open" href="/gui/vpk-browser">
+    Learn how to navigate and extract files
+  </Card>
+  <Card title="Settings" icon="sliders" href="/gui/settings">
+    Configure viewer quality and performance
+  </Card>
+</CardGroup>

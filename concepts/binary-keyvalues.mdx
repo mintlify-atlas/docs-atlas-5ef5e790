@@ -1,0 +1,566 @@
+---
+title: Binary KeyValues
+description: Understanding KV1 and KV3 binary data formats in Source 2
+---
+
+## Overview
+
+Source 2 uses two KeyValues binary formats for structured data storage:
+
+- **KV1** (KeyValues1) - Legacy binary format from Source 1
+- **KV3** (KeyValues3) - Modern binary format with versioning and compression
+
+These formats are used extensively in DATA blocks and other specialized blocks.
+
+## Binary KV1 Format
+
+### Magic Number
+
+```csharp
+// From BinaryKV1.cs:14
+public const int MAGIC = 0x564B4256; // "VBKV"
+```
+
+KV1 files start with the magic bytes `VBKV` (0x564B4256).
+
+### Structure
+
+```csharp
+// From BinaryKV1.cs:9-54
+public class BinaryKV1 : Block
+{
+    public override BlockType Type => BlockType.DATA;
+    
+    /// <summary>
+    /// Gets the deserialized KeyValues data.
+    /// </summary>
+    public KVObject? KeyValues { get; private set; }
+
+    public override void Read(BinaryReader reader)
+    {
+        reader.BaseStream.Position = Offset;
+        KeyValues = KVSerializer.Create(KVSerializationFormat.KeyValues1Binary)
+            .Deserialize(reader.BaseStream);
+    }
+}
+```
+
+### Usage
+
+KV1 is the legacy format, rarely used in modern Source 2 resources:
+
+```csharp
+using var resource = new Resource();
+resource.Read("legacy_data.vdata_c");
+
+if (resource.DataBlock is BinaryKV1 kv1)
+{
+    var data = kv1.KeyValues;
+    // Access KV1 data
+}
+```
+
+## Binary KV3 Format
+
+### Magic Numbers
+
+KV3 supports multiple versions:
+
+```csharp
+// From BinaryKV3.cs:26-53
+public const int MAGIC0 = 0x03564B56; // VKV3 (3 isn't ASCII, it's 0x03)
+public const int MAGIC1 = 0x4B563301; // KV3\x01
+public const int MAGIC2 = 0x4B563302; // KV3\x02
+public const int MAGIC3 = 0x4B563303; // KV3\x03
+public const int MAGIC4 = 0x4B563304; // KV3\x04
+public const int MAGIC5 = 0x4B563305; // KV3\x05
+
+public static bool IsBinaryKV3(uint magic) => 
+    magic is MAGIC0 or MAGIC1 or MAGIC2 or MAGIC3 or MAGIC4 or MAGIC5;
+```
+
+### Structure
+
+```csharp
+// From BinaryKV3.cs:18-125
+public partial class BinaryKV3 : Block
+{
+    public override BlockType Type => KVBlockType;
+    
+    /// <summary>
+    /// Gets the deserialized KeyValues3 data.
+    /// </summary>
+    public KVObject Data { get; private set; }
+
+    /// <summary>
+    /// Gets the encoding identifier for this KV3 data.
+    /// </summary>
+    public KV3ID? Encoding { get; private set; }
+
+    /// <summary>
+    /// Gets the format identifier for this KV3 data.
+    /// </summary>
+    public KV3ID Format { get; private set; }
+}
+```
+
+### Format Identifier
+
+Each KV3 block has a format GUID that identifies its schema:
+
+```csharp
+// From BinaryKV3.cs:208
+Format = KV3IDLookup.GetByValue(new Guid(reader.ReadBytes(16)));
+```
+
+Common format identifiers include:
+- Generic data structures
+- Material parameters
+- Particle definitions
+- Animation data
+
+### Compression Methods
+
+KV3 supports multiple compression methods:
+
+<ResponseField name="0" type="Uncompressed">
+  No compression applied
+</ResponseField>
+
+<ResponseField name="1" type="LZ4">
+  LZ4 compression with 16KB frame size (version 2+)
+</ResponseField>
+
+<ResponseField name="2" type="ZSTD">
+  Zstandard compression (version 2+)
+</ResponseField>
+
+```csharp
+// From BinaryKV3.cs:210-376
+var compressionMethod = reader.ReadUInt32();
+
+if (compressionMethod == 0) // Uncompressed
+{
+    reader.Read(buffer1Span);
+}
+else if (compressionMethod == 1) // LZ4
+{
+    DecompressLZ4(reader, buffer1Span, sizeCompressedBuffer1);
+}
+else if (compressionMethod == 2) // ZSTD
+{
+    DecompressZSTD(zstdDecompressor, reader, buffer1Raw.AsSpan(0, outBufferLength), 
+                   sizeCompressedBuffer1);
+}
+```
+
+### Version Differences
+
+#### Version 1
+- Basic structure
+- Limited metadata
+- No compression dictionary support
+
+#### Version 2-4
+- Added compression support (LZ4, ZSTD)
+- Compression frame size (16KB)
+- Binary blob storage
+- Block-based compression for large data
+
+#### Version 5 (Latest)
+- Dual buffer system (primary + auxiliary)
+- Optimized memory layout
+- Improved string storage
+- Better handling of typed arrays
+
+```csharp
+// From BinaryKV3.cs:270-286
+if (version >= 5)
+{
+    sizeUncompressedBuffer1 = reader.ReadInt32();
+    sizeCompressedBuffer1 = reader.ReadInt32();
+    sizeUncompressedBuffer2 = reader.ReadInt32();
+    sizeCompressedBuffer2 = reader.ReadInt32();
+    countBytes1_buffer2 = reader.ReadInt32();
+    countBytes2_buffer2 = reader.ReadInt32();
+    countBytes4_buffer2 = reader.ReadInt32();
+    countBytes8_buffer2 = reader.ReadInt32();
+    // ...
+}
+```
+
+## KV3 Data Types
+
+KV3 supports a rich type system:
+
+### Hardcoded Values
+
+```csharp
+case KV3BinaryNodeType.NULL:
+case KV3BinaryNodeType.BOOLEAN_TRUE:
+case KV3BinaryNodeType.BOOLEAN_FALSE:
+case KV3BinaryNodeType.INT64_ZERO:
+case KV3BinaryNodeType.INT64_ONE:
+case KV3BinaryNodeType.DOUBLE_ZERO:
+case KV3BinaryNodeType.DOUBLE_ONE:
+```
+
+### Numeric Types
+
+<ResponseField name="BOOLEAN" type="1 byte">
+  Boolean value (true/false)
+</ResponseField>
+
+<ResponseField name="INT16" type="2 bytes">
+  16-bit signed integer (version 4+)
+</ResponseField>
+
+<ResponseField name="UINT16" type="2 bytes">
+  16-bit unsigned integer (version 4+)
+</ResponseField>
+
+<ResponseField name="INT32" type="4 bytes">
+  32-bit signed integer
+</ResponseField>
+
+<ResponseField name="UINT32" type="4 bytes">
+  32-bit unsigned integer
+</ResponseField>
+
+<ResponseField name="INT64" type="8 bytes">
+  64-bit signed integer
+</ResponseField>
+
+<ResponseField name="UINT64" type="8 bytes">
+  64-bit unsigned integer
+</ResponseField>
+
+<ResponseField name="FLOAT" type="4 bytes">
+  32-bit floating point (version 4+)
+</ResponseField>
+
+<ResponseField name="DOUBLE" type="8 bytes">
+  64-bit floating point
+</ResponseField>
+
+<ResponseField name="INT32_AS_BYTE" type="1 byte">
+  Small integer stored as single byte (version 4+)
+</ResponseField>
+
+### String and Binary Types
+
+<ResponseField name="STRING" type="string reference">
+  Reference to string in string table
+</ResponseField>
+
+<ResponseField name="BINARY_BLOB" type="byte array">
+  Variable-length binary data
+</ResponseField>
+
+### Collection Types
+
+<ResponseField name="OBJECT" type="key-value pairs">
+  Object with named properties
+</ResponseField>
+
+<ResponseField name="ARRAY" type="untyped array">
+  Array with mixed types
+</ResponseField>
+
+<ResponseField name="ARRAY_TYPED" type="typed array">
+  Array where all elements have the same type
+</ResponseField>
+
+<ResponseField name="ARRAY_TYPE_BYTE_LENGTH" type="small typed array">
+  Typed array with length < 256 (version 4+)
+</ResponseField>
+
+<ResponseField name="ARRAY_TYPE_AUXILIARY_BUFFER" type="auxiliary typed array">
+  Typed array stored in auxiliary buffer (version 5+)
+</ResponseField>
+
+## KV3 Flags
+
+KV3 values can have metadata flags:
+
+```csharp
+public enum KVFlag
+{
+    None = 0,
+    Resource = 1,        // Resource path
+    ResourceName = 2,    // Resource name without extension
+    Panorama = 8,        // Panorama-specific
+    SoundEvent = 16,     // Sound event name
+    SubClass = 32,       // Subclass identifier
+}
+```
+
+Flags are stored alongside the type information:
+
+```csharp
+// From BinaryKV3.cs:700-748
+private static (KV3BinaryNodeType Type, KVFlag Flag) ReadType(Context context)
+{
+    var databyte = context.Types[0];
+    context.Types = context.Types[1..];
+    var flagInfo = KVFlag.None;
+
+    if (context.Version >= 3)
+    {
+        if ((databyte & 0x80) > 0)
+        {
+            databyte &= 0x3F; // Remove the flag bit
+            flagInfo = (KVFlag)context.Types[0];
+            context.Types = context.Types[1..];
+        }
+    }
+    
+    return ((KV3BinaryNodeType)databyte, flagInfo);
+}
+```
+
+## Reading KV3 Data
+
+### Basic Usage
+
+```csharp
+using var resource = new Resource();
+resource.Read("particles/example.vpcf_c");
+
+if (resource.DataBlock is BinaryKV3 kv3)
+{
+    var data = kv3.Data;
+    
+    // Access properties
+    foreach (var prop in data.Properties)
+    {
+        Console.WriteLine($"{prop.Key}: {prop.Value}");
+    }
+}
+```
+
+### Accessing Nested Data
+
+```csharp
+if (resource.DataBlock is BinaryKV3 kv3)
+{
+    // Get a specific property
+    if (kv3.Data.Properties.TryGetValue("m_nMaxParticles", out var maxParticles))
+    {
+        Console.WriteLine($"Max Particles: {maxParticles.Int64Value}");
+    }
+    
+    // Navigate nested objects
+    if (kv3.Data.Properties.TryGetValue("m_Children", out var children))
+    {
+        if (children.Value is KVObject childrenObj && childrenObj.IsArray)
+        {
+            foreach (var child in childrenObj.Properties.Values)
+            {
+                // Process each child
+            }
+        }
+    }
+}
+```
+
+### Converting to Text Format
+
+```csharp
+if (resource.DataBlock is BinaryKV3 kv3)
+{
+    // Get as KV3File for text output
+    var kv3File = kv3.GetKV3File();
+    
+    // Write to text format
+    using var writer = new IndentedTextWriter();
+    kv3File.WriteText(writer);
+    Console.WriteLine(writer.ToString());
+}
+```
+
+## KV3 in Specialized Blocks
+
+Many specialized blocks use KV3 format:
+
+```csharp
+// From Resource.cs:517-524
+BlockType.CTRL => new BinaryKV3(BlockType.CTRL) { Resource = this },
+BlockType.INSG => new BinaryKV3(BlockType.INSG) { Resource = this },
+BlockType.SrMa => new BinaryKV3(BlockType.SrMa) { Resource = this },
+BlockType.LaCo => new BinaryKV3(BlockType.LaCo) { Resource = this },
+BlockType.STAT => new BinaryKV3(BlockType.STAT) { Resource = this },
+BlockType.FLCI => new BinaryKV3(BlockType.FLCI) { Resource = this },
+BlockType.DSTF => new BinaryKV3(BlockType.DSTF) { Resource = this },
+```
+
+### CTRL Block Example
+
+```csharp
+// Sound files often have a CTRL block with KV3 data
+if (resource.ContainsBlockType(BlockType.CTRL))
+{
+    var ctrlBlock = (BinaryKV3)resource.GetBlockByType(BlockType.CTRL);
+    var soundData = ctrlBlock.Data;
+    
+    // Access sound configuration
+    if (soundData.Properties.TryGetValue("vsnd_files", out var files))
+    {
+        // Process sound files
+    }
+}
+```
+
+## Memory Layout
+
+KV3 uses a sophisticated buffer system to minimize memory usage:
+
+```csharp
+// From BinaryKV3.cs:77-95
+private class Buffers
+{
+    public ArraySegment<byte> Bytes1;  // 1-byte values
+    public ArraySegment<byte> Bytes2;  // 2-byte values (version 4+)
+    public ArraySegment<byte> Bytes4;  // 4-byte values
+    public ArraySegment<byte> Bytes8;  // 8-byte values
+}
+
+private class Context
+{
+    public int Version;
+    public ArraySegment<byte> Types;
+    public ArraySegment<byte> ObjectLengths;
+    public ArraySegment<byte> BinaryBlobs;
+    public ArraySegment<byte> BinaryBlobLengths;
+    public string[] Strings;
+    public Buffers Buffer;
+    public Buffers AuxiliaryBuffer;  // Version 5+
+}
+```
+
+Data is packed by size for optimal alignment:
+1. All 1-byte values together
+2. All 2-byte values aligned to 2-byte boundaries
+3. All 4-byte values aligned to 4-byte boundaries
+4. All 8-byte values aligned to 8-byte boundaries
+
+## Working with Arrays
+
+### Typed Arrays
+
+```csharp
+// Typed arrays store the element type once, then all elements
+case KV3BinaryNodeType.ARRAY_TYPED:
+    var arrayLength = MemoryMarshal.Read<int>(buffer.Bytes4);
+    buffer.Bytes4 = buffer.Bytes4[sizeof(int)..];
+    
+    var (subType, subFlagInfo) = ReadType(context);
+    var typedArray = new KVObject(name, isArray: true, capacity: arrayLength);
+    
+    for (var i = 0; i < arrayLength; i++)
+    {
+        ReadBinaryValue(context, name, subType, subFlagInfo, typedArray);
+    }
+```
+
+### Mixed Arrays
+
+```csharp
+// Untyped arrays store type information for each element
+case KV3BinaryNodeType.ARRAY:
+    var arrayLength = MemoryMarshal.Read<int>(buffer.Bytes4);
+    buffer.Bytes4 = buffer.Bytes4[sizeof(int)..];
+    
+    var array = new KVObject(name, isArray: true, capacity: arrayLength);
+    
+    for (var i = 0; i < arrayLength; i++)
+    {
+        ParseBinaryKV3(context, array, true);
+    }
+```
+
+## Binary Blobs
+
+Large binary data is stored separately:
+
+```csharp
+// From BinaryKV3.cs:928-945
+case KV3BinaryNodeType.BINARY_BLOB:
+    var blockLength = MemoryMarshal.Read<int>(context.BinaryBlobLengths);
+    context.BinaryBlobLengths = context.BinaryBlobLengths[sizeof(int)..];
+    
+    byte[] output;
+    if (blockLength > 0)
+    {
+        output = [.. context.BinaryBlobs[..blockLength]];
+        context.BinaryBlobs = context.BinaryBlobs[blockLength..];
+    }
+    else
+    {
+        output = [];
+    }
+    
+    parent.AddProperty(name, MakeValue(datatype, output, flagInfo));
+```
+
+## Example: Complete KV3 Parsing
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.ResourceTypes;
+
+using var resource = new Resource();
+resource.Read("materials/example.vmat_c");
+
+if (resource.DataBlock is Material material)
+{
+    Console.WriteLine($"Shader: {material.ShaderName}");
+    
+    // Material data is stored as KV3
+    foreach (var prop in material.Data.Properties)
+    {
+        Console.WriteLine($"{prop.Key}: {prop.Value}");
+    }
+    
+    // Access texture parameters
+    if (material.Data.Properties.TryGetValue("TextureColor", out var colorTex))
+    {
+        Console.WriteLine($"Color Texture: {colorTex.StringValue}");
+    }
+    
+    // Access numeric parameters
+    if (material.Data.Properties.TryGetValue("g_flMetalness", out var metalness))
+    {
+        Console.WriteLine($"Metalness: {metalness.FloatValue}");
+    }
+}
+```
+
+## Performance Considerations
+
+<Tip>
+KV3 uses ArrayPool for buffer management to reduce allocations:
+
+```csharp
+var buffer1Raw = ArrayPool<byte>.Shared.Rent(sizeUncompressedBuffer1);
+try
+{
+    // Use buffer
+}
+finally
+{
+    ArrayPool<byte>.Shared.Return(buffer1Raw);
+}
+```
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Blocks" icon="cube" href="/concepts/blocks">
+    Learn about block types that use KV3 format
+  </Card>
+  <Card title="Resource Types" icon="file" href="/concepts/resource-types">
+    See which resource types use KV3 data
+  </Card>
+</CardGroup>

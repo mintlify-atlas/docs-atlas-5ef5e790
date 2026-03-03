@@ -1,0 +1,139 @@
+---
+title: Mesh
+description: API reference for the Mesh resource type class
+---
+
+The `Mesh` class represents a mesh resource containing geometry and vertex buffer data.
+
+## Properties
+
+<ResponseField name="Name" type="string">
+  Gets or sets the mesh name.
+</ResponseField>
+
+<ResponseField name="VBIB" type="VBIB">
+  Gets or sets the mesh's vertex/index buffer block (VBIB).
+</ResponseField>
+
+<ResponseField name="MinBounds" type="Vector3">
+  Gets the minimum bounds of the mesh.
+</ResponseField>
+
+<ResponseField name="MaxBounds" type="Vector3">
+  Gets the maximum bounds of the mesh.
+</ResponseField>
+
+<ResponseField name="MorphData" type="Morph?">
+  Gets or sets the morph data for this mesh.
+</ResponseField>
+
+<ResponseField name="Attachments" type="Dictionary<string, Attachment>">
+  Gets the attachments associated with this mesh.
+</ResponseField>
+
+<ResponseField name="HitboxSets" type="Dictionary<string, Hitbox[]>">
+  Gets the hitbox sets associated with this mesh.
+</ResponseField>
+
+## Methods
+
+### GetBounds
+
+Calculates and sets the bounding box from scene objects.
+
+### LoadExternalMorphData
+
+Loads external morph data from the file loader.
+
+<ParamField path="fileLoader" type="IFileLoader">
+  The file loader to use.
+</ParamField>
+
+### IsCompressedNormalTangent (static)
+
+Determines if compressed normal tangent is enabled for the draw call.
+
+<ParamField path="drawCall" type="KVObject">
+  The draw call data.
+</ParamField>
+
+<ResponseField name="returns" type="bool">
+  True if compressed normal tangent is used.
+</ResponseField>
+
+### HasBakedLightingFromLightMap (static)
+
+Determines if the draw call has baked lighting from lightmap.
+
+<ParamField path="drawCall" type="KVObject">
+  The draw call data.
+</ParamField>
+
+<ResponseField name="returns" type="bool">
+  True if baked lighting from lightmap is present.
+</ResponseField>
+
+### HasBakedLightingFromVertexStream (static)
+
+Determines if the draw call has baked lighting from vertex stream.
+
+<ParamField path="drawCall" type="KVObject">
+  The draw call data.
+</ParamField>
+
+<ResponseField name="returns" type="bool">
+  True if baked lighting from vertex stream is present.
+</ResponseField>
+
+### IsOccluder (static)
+
+Determines if the draw call is an occluder.
+
+<ParamField path="drawCall" type="KVObject">
+  The draw call data.
+</ParamField>
+
+<ResponseField name="returns" type="bool">
+  True if the draw call is an occluder.
+</ResponseField>
+
+## Usage Example
+
+```csharp
+var resource = new Resource();
+var mesh = resource.DataBlock as Mesh;
+
+if (mesh != null)
+{
+    Console.WriteLine($"Mesh: {mesh.Name}");
+    
+    // Calculate bounds
+    mesh.GetBounds();
+    Console.WriteLine($"Bounds: {mesh.MinBounds} to {mesh.MaxBounds}");
+    
+    // Access vertex and index buffers
+    var vbib = mesh.VBIB;
+    Console.WriteLine($"Vertex buffers: {vbib.VertexBuffers.Count}");
+    Console.WriteLine($"Index buffers: {vbib.IndexBuffers.Count}");
+    
+    // Access scene objects and draw calls
+    var sceneObjects = mesh.Data.GetArray("m_sceneObjects");
+    foreach (var sceneObject in sceneObjects)
+    {
+        var drawCalls = sceneObject.GetArray("m_drawCalls");
+        foreach (var drawCall in drawCalls)
+        {
+            var isCompressed = Mesh.IsCompressedNormalTangent(drawCall);
+            Console.WriteLine($"Compressed normals: {isCompressed}");
+        }
+    }
+    
+    // Load external morph data if available
+    var fileLoader = new FileLoader();
+    mesh.LoadExternalMorphData(fileLoader);
+    if (mesh.MorphData != null)
+    {
+        Console.WriteLine("Morph data loaded");
+    }
+}
+```

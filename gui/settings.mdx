@@ -1,0 +1,399 @@
+---
+title: Settings
+description: Configure Source 2 Viewer display, rendering quality, themes, and application behavior
+---
+
+Source 2 Viewer provides extensive settings to customize your experience and optimize performance.
+
+## Accessing Settings
+
+Open the Settings panel:
+
+1. Click **Edit > Settings** in the menu bar
+2. Or press the Settings button in the toolbar
+3. The Settings panel opens in a new tab
+
+Settings are automatically saved when changed and persist across application restarts.
+
+## Settings Location
+
+Settings are stored in a KeyValues file:
+
+```
+%LocalAppData%\Source2Viewer\settings.vdf
+```
+
+This file contains all user preferences, recent files, bookmarks, and saved camera positions.
+
+<Warning>
+Do not manually edit this file while Source 2 Viewer is running. Changes will be overwritten when the application closes.
+</Warning>
+
+## Display Settings
+
+<CardGroup cols={2}>
+  <Card title="Theme" icon="palette">
+    Choose between light and dark interface themes
+  </Card>
+  <Card title="Window Size" icon="window-maximize">
+    Application remembers window position and state
+  </Card>
+</CardGroup>
+
+### Theme
+
+Select your preferred interface theme:
+
+- **Light Theme** - Bright interface with dark text
+- **Dark Theme** - Dark interface with light text (default)
+
+The theme applies to all UI elements including menus, panels, and viewers.
+
+### Text Viewer
+
+- **Font Size** - Adjust text size for script and code viewers (8-24pt)
+- **Word Wrap** - Toggle line wrapping in text viewers
+- **Syntax Highlighting** - Enable/disable color coding (always enabled)
+
+## Rendering Settings
+
+Configure 3D viewer quality and performance.
+
+### Graphics Quality
+
+<CardGroup cols={2}>
+  <Card title="Max Texture Size" icon="image">
+    Limit texture resolution to save memory
+  </Card>
+  <Card title="Anti-Aliasing" icon="wand-magic-sparkles">
+    Smooth edges with MSAA samples
+  </Card>
+  <Card title="Shadow Resolution" icon="sun">
+    Control shadow map quality
+  </Card>
+  <Card title="Field of View" icon="camera">
+    Adjust 3D camera perspective
+  </Card>
+</CardGroup>
+
+#### Max Texture Size
+
+Limits the maximum resolution of loaded textures:
+
+- **No Limit** - Load textures at full resolution (default)
+- **4096** - High quality, suitable for 4K displays
+- **2048** - Balanced quality and performance
+- **1024** - Lower quality, better performance
+- **512** - Minimum quality, best performance
+
+Lower values reduce VRAM usage and improve loading times, but textures will appear less detailed.
+
+<Tip>
+Set to 2048 or lower if you experience performance issues or have limited VRAM.
+</Tip>
+
+#### Anti-Aliasing Samples
+
+MSAA (Multi-Sample Anti-Aliasing) reduces jagged edges:
+
+- **Off** - No anti-aliasing (best performance)
+- **2x** - Minimal smoothing
+- **4x** - Good balance (recommended)
+- **8x** - High quality
+- **16x** - Maximum quality (may impact performance)
+
+Higher MSAA values improve visual quality but reduce frame rate.
+
+#### Shadow Resolution
+
+Controls shadow map quality:
+
+- **512** - Low quality, best performance
+- **1024** - Medium quality
+- **2048** - High quality (recommended)
+- **4096** - Very high quality
+- **8192** - Maximum quality (may impact performance)
+
+Higher resolutions produce sharper, more detailed shadows but use more VRAM.
+
+#### Field of View
+
+Adjust the 3D camera's field of view:
+
+- **Range:** 40° to 120°
+- **Default:** 75°
+- **Narrow FOV (50-60°)** - Zoomed in, less distortion
+- **Wide FOV (90-110°)** - Zoomed out, more peripheral vision
+
+Change FOV based on preference and display setup.
+
+### Performance
+
+<CardGroup cols={2}>
+  <Card title="VSync" icon="arrows-rotate">
+    Eliminate screen tearing
+  </Card>
+  <Card title="FPS Counter" icon="gauge-high">
+    Monitor rendering performance
+  </Card>
+</CardGroup>
+
+#### VSync (Vertical Sync)
+
+Controls frame rate synchronization:
+
+- **Off** - Unlocked frame rate, possible tearing
+- **On** - Lock to display refresh rate (60Hz, 144Hz, etc.)
+- **Adaptive** - Dynamic sync to prevent drops
+
+Enable VSync to eliminate screen tearing at the cost of input latency.
+
+#### Display FPS Counter
+
+Toggle the frame rate counter in 3D viewers:
+
+- **Enabled** - Shows FPS in top-right corner
+- **Disabled** - Hides FPS counter (default)
+
+Useful for monitoring performance when adjusting graphics settings.
+
+## Audio Settings
+
+<CardGroup cols={2}>
+  <Card title="Volume" icon="volume-high">
+    Master volume for all audio playback
+  </Card>
+  <Card title="Auto-play" icon="play">
+    Automatically play sounds on preview
+  </Card>
+</CardGroup>
+
+### Volume
+
+Master volume control for audio playback:
+
+- **Range:** 0% (muted) to 100% (full volume)
+- **Default:** 50%
+
+Volume setting persists across all audio files and sessions.
+
+### Auto-play Sounds
+
+Control automatic audio playback:
+
+- **Enabled** - Sounds play automatically when previewed
+- **Disabled** - Manual play button required (default)
+
+Useful when browsing many audio files without wanting automatic playback.
+
+## File Browser Settings
+
+Configure VPK browser and file explorer behavior.
+
+### Quick File Preview
+
+Control automatic file preview behavior:
+
+- **Enabled** - Files preview immediately when selected in tree
+- **Disabled** - Double-click required to open viewer
+
+Disable for better performance when navigating large archives.
+
+### Open Explorer on Start
+
+Control Game Explorer behavior:
+
+- **Enabled** - Show Game Explorer automatically on launch (default)
+- **Disabled** - Game Explorer only opens when requested
+
+The Game Explorer is suppressed on first launch or when opening files via command line.
+
+## Game Search Paths
+
+Configure custom game locations for the Game Explorer.
+
+### Adding Custom Paths
+
+1. Open Settings
+2. Navigate to **Game Search Paths** section
+3. Click **Add Path**
+4. Browse to game directory containing VPK files
+5. Click **OK**
+
+The Game Explorer scans these paths in addition to Steam library locations.
+
+### Default Search Paths
+
+Source 2 Viewer automatically searches:
+
+- Steam library folders (detected from Steam config)
+- Common game installation directories
+- Previously opened game directories
+
+### Removing Paths
+
+1. Select the path in the list
+2. Click **Remove**
+3. The path is removed from search locations
+
+<Note>
+Removing a path does not delete game files, it only stops the Game Explorer from scanning that location.
+</Note>
+
+## File Management
+
+### Recent Files
+
+Source 2 Viewer tracks up to 20 recently opened files:
+
+- Access from **File > Recent Files** menu
+- Automatically updated when opening files
+- Cleared when selecting **Clear Recent Files**
+
+### Bookmarks
+
+Bookmark frequently accessed files:
+
+1. Right-click a file in the VPK browser
+2. Select **Add Bookmark**
+3. Access from **View > Bookmarks**
+
+Bookmarks are saved across sessions and accessible from any open archive.
+
+### Open/Save Directories
+
+The application remembers:
+
+- **Last Open Directory** - Where you last opened a file
+- **Last Save Directory** - Where you last saved/exported a file
+
+These directories are used as defaults in file dialogs.
+
+## Camera Settings
+
+### Saved Camera Positions
+
+Save and restore camera positions in 3D viewers:
+
+<Steps>
+  <Step title="Save Position">
+    In a 3D viewer, position the camera, then click **Save Camera Position**
+  </Step>
+  <Step title="Name Position">
+    Enter a descriptive name for the camera position
+  </Step>
+  <Step title="Load Position">
+    Use **Load Camera Position** dropdown to return to saved views
+  </Step>
+</Steps>
+
+Saved positions are stored per-map/model and persist across sessions.
+
+### Managing Saved Cameras
+
+- **View All** - See list of all saved camera positions in Settings
+- **Delete** - Remove specific saved positions
+- **Clear All** - Remove all saved camera positions
+
+Camera positions include location, rotation, and field of view.
+
+## Update Settings
+
+Configure automatic update checking.
+
+### Check for Updates
+
+- **Automatic** - Check for updates on application startup
+- **Manual** - Only check when requested
+
+### Update Notifications
+
+When updates are available:
+
+- Notification appears in the application
+- Option to download from website
+- Release notes displayed
+
+Source 2 Viewer does not auto-download or install updates. You must manually download from the website.
+
+## Resetting Settings
+
+### Reset to Defaults
+
+To reset all settings to default values:
+
+1. Close Source 2 Viewer
+2. Delete the settings file: `%LocalAppData%\Source2Viewer\settings.vdf`
+3. Restart Source 2 Viewer
+
+All settings return to defaults, but this also clears recent files and bookmarks.
+
+### Partial Reset
+
+To reset only specific settings:
+
+1. Open Settings
+2. Adjust specific settings to default values
+3. Changes save automatically
+
+<Warning>
+Deleting the settings file also removes bookmarks, recent files, and saved camera positions. Back up the file if you want to preserve this data.
+</Warning>
+
+## Performance Optimization
+
+Recommended settings for different scenarios:
+
+### High-End Systems
+
+- **Max Texture Size:** No Limit or 4096
+- **Anti-Aliasing:** 8x or 16x
+- **Shadow Resolution:** 4096 or 8192
+- **VSync:** On (if 60Hz) or Off (if 144Hz+)
+- **Quick File Preview:** Enabled
+
+### Mid-Range Systems
+
+- **Max Texture Size:** 2048
+- **Anti-Aliasing:** 4x
+- **Shadow Resolution:** 2048
+- **VSync:** On
+- **Quick File Preview:** Enabled
+
+### Low-End Systems
+
+- **Max Texture Size:** 1024 or 512
+- **Anti-Aliasing:** Off or 2x
+- **Shadow Resolution:** 1024
+- **VSync:** Off
+- **Quick File Preview:** Disabled
+- **Display FPS:** Enabled (to monitor performance)
+
+### Large Archive Navigation
+
+- **Quick File Preview:** Disabled
+- **Auto-play Sounds:** Disabled
+- **Max Texture Size:** 2048 or lower
+
+This reduces memory usage when browsing archives with thousands of files.
+
+## Keyboard Shortcuts
+
+Settings-related shortcuts:
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+,` | Open Settings |
+| `Ctrl+Shift+R` | Clear recent files |
+| `Ctrl+B` | Open Bookmarks |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Features Overview" icon="star" href="/gui/features">
+    Explore all available features and capabilities
+  </Card>
+  <Card title="VPK Browser" icon="folder-tree" href="/gui/vpk-browser">
+    Learn to navigate and extract game files
+  </Card>
+</CardGroup>

@@ -1,0 +1,361 @@
+---
+title: ResourceType
+description: Enumeration of all Source 2 resource file types
+---
+
+The `ResourceType` enum identifies the type of a compiled Source 2 resource file. Each resource type corresponds to a specific file extension and contains different data structures.
+
+## Enum Definition
+
+```csharp
+public enum ResourceType
+```
+
+## Values
+
+### Unknown
+
+<ResponseField name="Unknown" type="0">
+  Unknown resource type. Assigned when the resource type cannot be determined.
+</ResponseField>
+
+### Animation & Models
+
+<ResponseField name="Animation" type="vanim">
+  Animgraph 1 animation file. Legacy, as all data is stored in the vmdl file.
+</ResponseField>
+
+<ResponseField name="AnimationGroup" type="vagrp">
+  Animgraph 1 animation group. Legacy, as all data is stored in the vmdl file.
+</ResponseField>
+
+<ResponseField name="AnimationGraph" type="vanmgrph">
+  Animgraph 1 graph for animation behavior and states.
+</ResponseField>
+
+<ResponseField name="NmGraph" type="vnmgraph">
+  Animgraph 2 graph for animation behavior. Graph variations have a vnmgraph.+variationname suffix.
+</ResponseField>
+
+<ResponseField name="NmGraphVariation" type="vnmvar">
+  Animgraph 2 graph variation.
+</ResponseField>
+
+<ResponseField name="NmSkeleton" type="vnmskel">
+  Animgraph 2 skeleton. Used for skeleton(s) and bonemask data.
+</ResponseField>
+
+<ResponseField name="NmClip" type="vnmclip">
+  Animgraph 2 animation clip. Can contain events to respond from graphs.
+</ResponseField>
+
+<ResponseField name="NmIKRig" type="vnmikrig">
+  Animgraph 2 IK rig. Can contain IK rig data.
+</ResponseField>
+
+<ResponseField name="Sequence" type="vseq">
+  Sequence group. Legacy, as all data is stored in the vmdl file.
+</ResponseField>
+
+<ResponseField name="Mesh" type="vmesh">
+  Mesh geometry. Legacy, as all data is stored in the vmdl file.
+</ResponseField>
+
+<ResponseField name="Model" type="vmdl">
+  3D model created in the ModelDoc Editor.
+</ResponseField>
+
+<ResponseField name="Morph" type="vmorf">
+  Morph set containing blend shapes and flex data.
+</ResponseField>
+
+### Materials & Textures
+
+<ResponseField name="Material" type="vmat">
+  Material definition created in the Material Editor.
+</ResponseField>
+
+<ResponseField name="Texture" type="vtex">
+  Compiled texture file.
+</ResponseField>
+
+<ResponseField name="CompositeMaterial" type="vcompmat">
+  Composite material kit for CS2 weapon skins.
+</ResponseField>
+
+### Particles & Effects
+
+<ResponseField name="Particle" type="vpcf">
+  Particle system created in the Particle Editor.
+</ResponseField>
+
+<ResponseField name="ParticleSnapshotLegacy" type="vpsf">
+  Legacy particle snapshot.
+</ResponseField>
+
+<ResponseField name="ParticleSnapshot" type="vsnap">
+  Particle snapshot reference.
+</ResponseField>
+
+<ResponseField name="PostProcessing" type="vpost">
+  Post-processing settings created in the Postprocessing Editor.
+</ResponseField>
+
+### World & Maps
+
+<ResponseField name="World" type="vwrld">
+  World root file containing map-level data.
+</ResponseField>
+
+<ResponseField name="WorldNode" type="vwnod">
+  World node referencing map geometry and scene objects.
+</ResponseField>
+
+<ResponseField name="WorldVisibility" type="vvis">
+  World visibility data stored in voxel clusters.
+</ResponseField>
+
+<ResponseField name="EntityLump" type="vents">
+  Entity lump containing map entities.
+</ResponseField>
+
+<ResponseField name="Map" type="vmap">
+  Map definition file.
+</ResponseField>
+
+### Audio
+
+<ResponseField name="Sound" type="vsnd">
+  Sound file or sound container.
+</ResponseField>
+
+<ResponseField name="SoundEventScript" type="vsndevts">
+  Sound event script defining sound events.
+</ResponseField>
+
+<ResponseField name="VMix" type="vmix">
+  Mix graph for audio mixing created in the VMix Tool.
+</ResponseField>
+
+<ResponseField name="SoundStackScript" type="vsndstck">
+  Sound stack script with rules and operators for sound events.
+</ResponseField>
+
+### Panorama UI
+
+<ResponseField name="Panorama" type="vtxt">
+  Panorama UI element. All Panorama files are compiled as CompilePanorama. vtxt is not a real extension.
+</ResponseField>
+
+<ResponseField name="PanoramaStyle" type="vcss">
+  Panorama CSS style defining UI appearance.
+</ResponseField>
+
+<ResponseField name="PanoramaLayout" type="vxml">
+  Panorama XML layout defining UI structure.
+</ResponseField>
+
+<ResponseField name="PanoramaDynamicImages" type="vpdi">
+  Panorama dynamic images manifest.
+</ResponseField>
+
+<ResponseField name="PanoramaScript" type="vjs">
+  Panorama JavaScript.
+</ResponseField>
+
+<ResponseField name="PanoramaTypescript" type="vts">
+  Panorama TypeScript.
+</ResponseField>
+
+<ResponseField name="PanoramaVectorGraphic" type="vsvg">
+  Panorama SVG vector graphic.
+</ResponseField>
+
+### Physics
+
+<ResponseField name="PhysicsCollisionMesh" type="vphys">
+  Physics collision mesh.
+</ResponseField>
+
+<ResponseField name="SurfaceProperties" type="vsurf">
+  Surface properties for materials.
+</ResponseField>
+
+### Scripting & Data
+
+<ResponseField name="VData" type="vdata">
+  Generic data for game content like weapons, heroes, and abilities.
+</ResponseField>
+
+<ResponseField name="ResponseRules" type="vrr">
+  Response rules for voiceline playback.
+</ResponseField>
+
+<ResponseField name="PulseGraphDef" type="vpulse">
+  Pulse graph definition created in the Pulse Editor.
+</ResponseField>
+
+<ResponseField name="ChoreoSceneFileData" type="vcdlist">
+  Choreo scene file data combining multiple VCD files.
+</ResponseField>
+
+<ResponseField name="ChoreoSceneResource" type="vcd">
+  Choreo scene file.
+</ResponseField>
+
+### Miscellaneous
+
+<ResponseField name="ActionList" type="valst">
+  Action list for surface property impact effects.
+</ResponseField>
+
+<ResponseField name="Sheet" type="vmks">
+  Sheet file.
+</ResponseField>
+
+<ResponseField name="ResourceManifest" type="vrman">
+  Resource manifest for preloading assets.
+</ResponseField>
+
+<ResponseField name="BitmapFont" type="vfont">
+  Bitmap font.
+</ResponseField>
+
+<ResponseField name="ResourceRemapTable" type="vrmap">
+  Resource remap table.
+</ResponseField>
+
+<ResponseField name="SmartProp" type="vsmart">
+  Smart prop with defined rules and parameters in the VData Editor.
+</ResponseField>
+
+<ResponseField name="ProcessingGraphInstance" type="vpram">
+  Processing graph instance. Precursor to legacy VMDL nodes.
+</ResponseField>
+
+<ResponseField name="Shader" type="vcs">
+  Compiled shader. Stored in shaders_{platform}_dir.vpk.
+</ResponseField>
+
+### Game-Specific
+
+<ResponseField name="EconItem" type="econitem">
+  CS2 economy item created in the CS2 Item Editor.
+</ResponseField>
+
+<ResponseField name="ArtifactItem" type="item">
+  Artifact item from items_game.txt.
+</ResponseField>
+
+<ResponseField name="DotaHeroList" type="herolist">
+  Dota 2 hero list.
+</ResponseField>
+
+<ResponseField name="DotaPatchNotes" type="vdpn">
+  Dota 2 patch notes.
+</ResponseField>
+
+<ResponseField name="DotaVisualNovels" type="vdvn">
+  Dota 2 visual novels.
+</ResponseField>
+
+### S&box
+
+<ResponseField name="SboxManagedResource" type="sbox">
+  S&box managed resource of any type. Managed resources can have any extension.
+</ResponseField>
+
+<ResponseField name="SboxShader" type="shader">
+  S&box shader.
+</ResponseField>
+
+## Usage Examples
+
+### Determining Resource Type
+
+```csharp
+using ValveResourceFormat;
+
+using var resource = new Resource();
+resource.Read("materials/metal.vmat_c");
+
+switch (resource.ResourceType)
+{
+    case ResourceType.Material:
+        Console.WriteLine("This is a material file");
+        break;
+    case ResourceType.Texture:
+        Console.WriteLine("This is a texture file");
+        break;
+    case ResourceType.Model:
+        Console.WriteLine("This is a model file");
+        break;
+    default:
+        Console.WriteLine($"Unknown or unsupported type: {resource.ResourceType}");
+        break;
+}
+```
+
+### Filtering Resources by Type
+
+```csharp
+var resourceFiles = Directory.GetFiles("extracted", "*_c", SearchOption.AllDirectories);
+var materials = new List<string>();
+
+foreach (var file in resourceFiles)
+{
+    using var resource = new Resource();
+    try
+    {
+        resource.Read(file);
+        if (resource.ResourceType == ResourceType.Material)
+        {
+            materials.Add(file);
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Failed to read {file}: {ex.Message}");
+    }
+}
+
+Console.WriteLine($"Found {materials.Count} material files");
+```
+
+### Type-Specific Processing
+
+```csharp
+using var resource = new Resource();
+resource.Read("example_c");
+
+if (resource.ResourceType == ResourceType.Model)
+{
+    var model = (Model)resource.DataBlock;
+    // Process model data
+}
+else if (resource.ResourceType == ResourceType.Texture)
+{
+    var texture = (Texture)resource.DataBlock;
+    // Process texture data
+}
+else if (resource.ResourceType == ResourceType.Sound)
+{
+    var sound = (Sound)resource.DataBlock;
+    // Process sound data
+}
+```
+
+## Extension Mapping
+
+Each ResourceType has an associated file extension attribute. Use `ResourceTypeExtensions.DetermineByFileExtension()` to determine the type from a file extension:
+
+```csharp
+var extension = Path.GetExtension("materials/example.vmat_c");
+var resourceType = ResourceTypeExtensions.DetermineByFileExtension(extension);
+// Returns: ResourceType.Material
+```
+
+## See Also
+
+- [Resource](/api/resource) - Main resource class
+- [Block](/api/block) - Base class for resource blocks

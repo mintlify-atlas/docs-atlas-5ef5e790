@@ -1,0 +1,266 @@
+---
+title: Resource
+description: Core class for reading and manipulating Valve Source 2 resource files
+---
+
+The `Resource` class is the main entry point for working with Source 2 resource files. It handles reading, parsing, and providing access to the blocks and data contained within compiled resource files.
+
+## Constructor
+
+<ParamField path="Resource()" type="constructor">
+  Creates a new empty `Resource` instance with `ResourceType.Unknown`.
+</ParamField>
+
+<ParamField path="Resource(ResourceType, ushort)" type="constructor">
+  Creates a new `Resource` instance for creating new resources.
+  
+  <ParamField path="resourceType" type="ResourceType" required>
+    The type of resource to create
+  </ParamField>
+  
+  <ParamField path="version" type="ushort" default="0">
+    The file type version
+  </ParamField>
+</ParamField>
+
+## Properties
+
+<ResponseField name="KnownHeaderVersion" type="const ushort" default="12">
+  The known and expected header version for resource files.
+</ResponseField>
+
+<ResponseField name="Reader" type="BinaryReader?">
+  Gets the binary reader. **USE AT YOUR OWN RISK!** It is exposed publicly to ease reading the same file.
+</ResponseField>
+
+<ResponseField name="FileName" type="string?">
+  Gets or sets the file name this resource was parsed from.
+</ResponseField>
+
+<ResponseField name="FileSize" type="uint">
+  Gets the resource size as specified in the file header.
+</ResponseField>
+
+<ResponseField name="HeaderVersion" type="ushort">
+  Gets the version of this resource header, should be 12.
+</ResponseField>
+
+<ResponseField name="Version" type="ushort">
+  Gets the file type version.
+</ResponseField>
+
+<ResponseField name="Blocks" type="List<Block>">
+  Gets the list of blocks this resource contains. Use this to iterate through all blocks in the resource.
+</ResponseField>
+
+<ResponseField name="ResourceType" type="ResourceType">
+  Gets the type of the resource (e.g., Model, Texture, Material, etc.).
+</ResponseField>
+
+<ResponseField name="EditInfo" type="ResourceEditInfo?">
+  Gets the ResourceEditInfo block containing dependency and compilation metadata.
+</ResponseField>
+
+<ResponseField name="ExternalReferences" type="ResourceExtRefList?">
+  Gets the ResourceExtRefList block containing external resource references.
+</ResponseField>
+
+<ResponseField name="DataBlock" type="Block?">
+  Gets the generic DATA block, which contains the primary resource content.
+</ResponseField>
+
+<ResponseField name="FullFileSize" type="uint">
+  Gets the full file size including streaming data. Resource files have a FileSize in the metadata, however certain file types such as sounds have streaming audio data come after the resource file, and the size is specified within the DATA block. This property attempts to return the correct size.
+</ResponseField>
+
+## Methods
+
+### Read
+
+<ParamField path="Read(string)" type="void">
+  Opens and reads the given filename. The file is held open until the object is disposed.
+  
+  <ParamField path="filename" type="string" required>
+    The file to open and read
+  </ParamField>
+</ParamField>
+
+```csharp
+var resource = new Resource();
+resource.Read("materials/example.vmat_c");
+Console.WriteLine($"Resource type: {resource.ResourceType}");
+resource.Dispose();
+```
+
+<ParamField path="Read(Stream, bool, bool)" type="void">
+  Reads the given Stream.
+  
+  <ParamField path="input" type="Stream" required>
+    The input Stream to read from
+  </ParamField>
+  
+  <ParamField path="verifyFileSize" type="bool" default="true">
+    Whether to verify that the stream was correctly consumed
+  </ParamField>
+  
+  <ParamField path="leaveOpen" type="bool" default="false">
+    Whether to leave the stream open after the object is disposed
+  </ParamField>
+  
+  <Note>
+    The input stream must remain open while accessing data from this resource, as some operations may perform reads lazily from the stream at call time.
+  </Note>
+</ParamField>
+
+```csharp
+using var stream = File.OpenRead("models/example.vmdl_c");
+var resource = new Resource();
+resource.Read(stream, verifyFileSize: true, leaveOpen: false);
+```
+
+### Serialize
+
+<ParamField path="Serialize(Stream)" type="void">
+  Serialize resource to binary.
+  
+  <ParamField path="stream" type="Stream" required>
+    Stream to write to. The stream must support seeking.
+  </ParamField>
+  
+  <Warning>
+    NOT PRODUCTION READY! Not all blocks support serialization and will throw. The total file size must not exceed uint.MaxValue.
+  </Warning>
+</ParamField>
+
+```csharp
+var resource = new Resource(ResourceType.Material, version: 2);
+// Add blocks to resource...
+using var outputStream = File.Create("output.vmat_c");
+resource.Serialize(outputStream);
+```
+
+### Block Access Methods
+
+<ParamField path="GetBlockByIndex(int)" type="Block">
+  Gets a block by its index in the blocks list.
+  
+  <ParamField path="index" type="int" required>
+    The zero-based index of the block
+  </ParamField>
+  
+  <ResponseField name="returns" type="Block">
+    The block at the specified index
+  </ResponseField>
+  
+  Throws `ArgumentOutOfRangeException` when the index is out of range.
+</ParamField>
+
+<ParamField path="GetBlockByType(BlockType)" type="Block?">
+  Gets the first block of the specified type.
+  
+  <ParamField path="type" type="BlockType" required>
+    The type of block to retrieve
+  </ParamField>
+  
+  <ResponseField name="returns" type="Block?">
+    The first block of the specified type, or null if not found
+  </ResponseField>
+</ParamField>
+
+```csharp
+var dataBlock = resource.GetBlockByType(BlockType.DATA);
+if (dataBlock != null)
+{
+    Console.WriteLine($"Found DATA block at offset {dataBlock.Offset}");
+}
+```
+
+<ParamField path="ContainsBlockType(BlockType)" type="bool">
+  Determines whether the resource contains a block of the specified type.
+  
+  <ParamField path="type" type="BlockType" required>
+    The type of block to check for
+  </ParamField>
+  
+  <ResponseField name="returns" type="bool">
+    True if a block of the specified type exists; otherwise, false
+  </ResponseField>
+</ParamField>
+
+```csharp
+if (resource.ContainsBlockType(BlockType.VBIB))
+{
+    Console.WriteLine("Resource contains vertex buffer data");
+}
+```
+
+### Dispose
+
+<ParamField path="Dispose()" type="void">
+  Releases the binary reader and closes any open file streams. Always call this when done with a Resource.
+</ParamField>
+
+```csharp
+using var resource = new Resource();
+resource.Read("example.vmdl_c");
+// Resource is automatically disposed when leaving scope
+```
+
+## Usage Examples
+
+### Reading a Resource File
+
+```csharp
+using ValveResourceFormat;
+
+using var resource = new Resource();
+resource.Read("materials/metal.vmat_c");
+
+Console.WriteLine($"File: {resource.FileName}");
+Console.WriteLine($"Type: {resource.ResourceType}");
+Console.WriteLine($"Version: {resource.Version}");
+Console.WriteLine($"Block Count: {resource.Blocks.Count}");
+
+foreach (var block in resource.Blocks)
+{
+    Console.WriteLine($"  Block: {block.Type} (Size: {block.Size} bytes)");
+}
+```
+
+### Accessing Resource Data
+
+```csharp
+using var resource = new Resource();
+resource.Read("models/props/barrel.vmdl_c");
+
+if (resource.ResourceType == ResourceType.Model)
+{
+    var dataBlock = resource.DataBlock;
+    if (dataBlock is Model model)
+    {
+        Console.WriteLine($"Model has {model.GetMeshes().Count()} meshes");
+    }
+}
+```
+
+### Working with External References
+
+```csharp
+using var resource = new Resource();
+resource.Read("materials/example.vmat_c");
+
+if (resource.ExternalReferences != null)
+{
+    Console.WriteLine("External References:");
+    foreach (var reference in resource.ExternalReferences.ResourceRefInfoList)
+    {
+        Console.WriteLine($"  {reference.Name}");
+    }
+}
+```
+
+## See Also
+
+- [Block](/api/block) - Base class for all resource blocks
+- [ResourceType](/api/resource-type) - Enum of all supported resource types
+- [Blocks](/concepts/blocks) - Learn about block types

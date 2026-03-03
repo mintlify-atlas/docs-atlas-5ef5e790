@@ -1,0 +1,396 @@
+---
+title: Texture Decoders
+description: Texture format decoding utilities for Source 2 image formats
+---
+
+The texture decoder utilities in ValveResourceFormat provide decompression and decoding for various texture formats used in Source 2 resources, including block-compressed formats and uncompressed pixel formats.
+
+## Overview
+
+Source 2 uses a variety of texture formats:
+
+- **BCn formats**: Block-compressed formats (BC1-BC7, BC6H)
+- **Uncompressed formats**: RGBA8888, BGRA8888, RGB formats
+- **High dynamic range**: RGBA16F, RGBA32F, RGB32F
+- **Special formats**: IA88 (intensity-alpha), I8 (intensity)
+- **Mobile formats**: ETC2, ETC2 with EAC alpha
+
+## ITextureDecoder Interface
+
+All texture decoders implement a common interface:
+
+```csharp
+internal interface ITextureDecoder
+{
+    void Decode(SKBitmap bitmap, Span<byte> input);
+}
+```
+
+### Parameters
+
+- **bitmap**: Output bitmap to write decoded pixels to
+- **input**: Compressed or encoded texture data
+
+## BCn Decoders
+
+Block-compressed texture formats (DirectX formats).
+
+### Namespace
+
+```csharp
+using ValveResourceFormat.TextureDecoders;
+```
+
+### Supported Formats
+
+- **BC1**: DXT1, 4 bits per pixel, RGB or 1-bit alpha
+- **BC2**: DXT3, 8 bits per pixel, RGB with explicit alpha
+- **BC3**: DXT5, 8 bits per pixel, RGB with interpolated alpha
+- **BC4**: Single channel compression
+- **BC5**: Dual channel compression (normal maps)
+- **BC6H**: HDR compression (float16)
+- **BC7**: High-quality RGB/RGBA compression
+
+### Usage
+
+```csharp
+using SkiaSharp;
+using ValveResourceFormat.TextureDecoders;
+using TinyBCSharp;
+
+var width = 1024;
+var height = 1024;
+var format = BlockFormat.BC3;
+
+// Create output bitmap
+var bitmap = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
+
+// Decode compressed data
+var decoder = new DecodeBCn(width, height, format);
+decoder.Decode(bitmap, compressedData);
+
+// Use decoded bitmap
+bitmap.Encode(SKEncodedImageFormat.Png, 100);
+```
+
+## Uncompressed Format Decoders
+
+### RGBA8888
+
+Standard 32-bit RGBA format:
+
+```csharp
+var decoder = new DecodeRGBA8888();
+var bitmap = new SKBitmap(width, height);
+decoder.Decode(bitmap, pixelData);
+```
+
+### BGRA8888
+
+Reversed channel order (common in DirectX):
+
+```csharp
+var decoder = new DecodeBGRA8888();
+var bitmap = new SKBitmap(width, height);
+decoder.Decode(bitmap, pixelData);
+```
+
+### High Dynamic Range Formats
+
+#### RGBA16F (Half Float)
+
+```csharp
+var decoder = new DecodeRGBA16161616F();
+var bitmap = new SKBitmap(width, height, SKColorType.RgbaF16, SKAlphaType.Unpremul);
+decoder.Decode(bitmap, pixelData);
+```
+
+#### RGBA32F (Full Float)
+
+```csharp
+var decoder = new DecodeRGBA32323232F();
+var bitmap = new SKBitmap(width, height, SKColorType.RgbaF32, SKAlphaType.Unpremul);
+decoder.Decode(bitmap, pixelData);
+```
+
+#### RGB32F
+
+```csharp
+var decoder = new DecodeRGB323232F();
+var bitmap = new SKBitmap(width, height, SKColorType.RgbF32, SKAlphaType.Unpremul);
+decoder.Decode(bitmap, pixelData);
+```
+
+## Special Format Decoders
+
+### Intensity-Alpha (IA88)
+
+Two-channel format with intensity and alpha:
+
+```csharp
+var decoder = new DecodeIA88();
+var bitmap = new SKBitmap(width, height);
+decoder.Decode(bitmap, pixelData);
+```
+
+### Intensity Only (I8)
+
+Single-channel grayscale:
+
+```csharp
+var decoder = new DecodeI8();
+var bitmap = new SKBitmap(width, height);
+decoder.Decode(bitmap, pixelData);
+```
+
+### Single/Dual Channel Formats
+
+#### R16 (16-bit single channel)
+
+```csharp
+var decoder = new DecodeR16();
+var bitmap = new SKBitmap(width, height);
+decoder.Decode(bitmap, pixelData);
+```
+
+#### RG16 (16-bit dual channel)
+
+```csharp
+var decoder = new DecodeRG1616();
+var bitmap = new SKBitmap(width, height);
+decoder.Decode(bitmap, pixelData);
+```
+
+#### R16F/R32F (Float single channel)
+
+```csharp
+var decoder16 = new DecodeR16F();
+var decoder32 = new DecodeR32F();
+
+var bitmap = new SKBitmap(width, height, SKColorType.RgbaF16, SKAlphaType.Unpremul);
+decoder16.Decode(bitmap, pixelData);
+```
+
+## Mobile Format Decoders
+
+### ETC2
+
+Ericsson Texture Compression 2 (mobile GPUs):
+
+```csharp
+var decoder = new DecodeETC2(width, height);
+var bitmap = new SKBitmap(width, height);
+decoder.Decode(bitmap, compressedData);
+```
+
+### ETC2 with EAC Alpha
+
+ETC2 RGB with separate alpha channel:
+
+```csharp
+var decoder = new DecodeETC2EAC(width, height);
+var bitmap = new SKBitmap(width, height);
+decoder.Decode(bitmap, compressedData);
+```
+
+## Complete Texture Loading Example
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.ResourceTypes;
+using ValveResourceFormat.TextureDecoders;
+using SkiaSharp;
+
+public SKBitmap LoadTexture(string path)
+{
+    // Load resource
+    var resource = new Resource();
+    resource.Read(path);
+    
+    // Get texture data
+    var texture = (Texture)resource.DataBlock;
+    
+    // Get dimensions
+    var width = texture.Width;
+    var height = texture.Height;
+    var format = texture.Format;
+    
+    // Create appropriate decoder
+    ITextureDecoder decoder = format switch
+    {
+        VTexFormat.DXT1 => new DecodeBCn(width, height, BlockFormat.BC1),
+        VTexFormat.DXT5 => new DecodeBCn(width, height, BlockFormat.BC3),
+        VTexFormat.BC7 => new DecodeBCn(width, height, BlockFormat.BC7),
+        VTexFormat.BC6H => new DecodeBCn(width, height, BlockFormat.BC6HUf16),
+        VTexFormat.RGBA8888 => new DecodeRGBA8888(),
+        VTexFormat.BGRA8888 => new DecodeBGRA8888(),
+        VTexFormat.RGBA16161616F => new DecodeRGBA16161616F(),
+        _ => throw new NotSupportedException($"Format {format} not supported")
+    };
+    
+    // Create bitmap
+    var colorType = format switch
+    {
+        VTexFormat.RGBA16161616F => SKColorType.RgbaF16,
+        VTexFormat.RGBA32323232F => SKColorType.RgbaF32,
+        _ => SKColorType.Bgra8888
+    };
+    
+    var bitmap = new SKBitmap(width, height, colorType, SKAlphaType.Unpremul);
+    
+    // Decode texture data
+    var textureData = texture.GetTextureData();
+    decoder.Decode(bitmap, textureData);
+    
+    return bitmap;
+}
+```
+
+## HDR Texture Handling
+
+### BC6H Decompression
+
+BC6H can output to half-float or be converted to LDR:
+
+```csharp
+// To half-float (preserves HDR)
+var bitmap = new SKBitmap(width, height, SKColorType.RgbaF16, SKAlphaType.Unpremul);
+var decoder = new DecodeBCn(width, height, BlockFormat.BC6HUf16);
+decoder.Decode(bitmap, compressedData);
+
+// To LDR (tone-mapped)
+var bitmapLDR = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
+var decoder = new DecodeBCn(width, height, BlockFormat.BC6HUf32);
+decoder.Decode(bitmapLDR, compressedData);
+// Automatically tone-mapped to 0-255 range
+```
+
+## Common Utility Functions
+
+### Color Space Conversion
+
+The `Common` class provides utility functions:
+
+```csharp
+using ValveResourceFormat.TextureDecoders;
+
+// Swap red and blue channels (RGBA <-> BGRA)
+Common.SwapRB(pixelSpan);
+
+// Convert HDR float to LDR byte (with clamping)
+var ldrValue = Common.ToClampedLdrColor(hdrFloat);
+```
+
+### Channel Swapping
+
+```csharp
+// Swap R and B channels in-place
+public void SwapChannels(Span<byte> pixels)
+{
+    for (int i = 0; i < pixels.Length; i += 4)
+    {
+        // Swap R and B
+        (pixels[i], pixels[i + 2]) = (pixels[i + 2], pixels[i]);
+    }
+}
+```
+
+## Mipmap Handling
+
+```csharp
+var texture = (Texture)resource.DataBlock;
+
+// Get specific mip level
+for (int mip = 0; mip < texture.MipCount; mip++)
+{
+    var mipWidth = Math.Max(1, texture.Width >> mip);
+    var mipHeight = Math.Max(1, texture.Height >> mip);
+    
+    var mipData = texture.GetTextureData(mip);
+    
+    var bitmap = new SKBitmap(mipWidth, mipHeight);
+    decoder.Decode(bitmap, mipData);
+    
+    // Process mipmap...
+}
+```
+
+## Performance Considerations
+
+### Using Spans
+
+All decoders use `Span<byte>` for zero-copy operations:
+
+```csharp
+// No allocation needed
+Span<byte> textureData = stackalloc byte[dataSize];
+reader.Read(textureData);
+decoder.Decode(bitmap, textureData);
+```
+
+### Parallel Decoding
+
+For multiple textures, decode in parallel:
+
+```csharp
+Parallel.ForEach(texturePaths, path =>
+{
+    var bitmap = LoadTexture(path);
+    ProcessTexture(bitmap);
+});
+```
+
+## Error Handling
+
+```csharp
+try
+{
+    decoder.Decode(bitmap, compressedData);
+}
+catch (ArgumentException ex)
+{
+    Console.WriteLine($"Invalid texture data: {ex.Message}");
+}
+catch (NotSupportedException ex)
+{
+    Console.WriteLine($"Format not supported: {ex.Message}");
+}
+```
+
+## Format Detection
+
+```csharp
+public bool IsBlockCompressed(VTexFormat format)
+{
+    return format switch
+    {
+        VTexFormat.DXT1 or
+        VTexFormat.DXT5 or
+        VTexFormat.BC4 or
+        VTexFormat.BC5 or
+        VTexFormat.BC6H or
+        VTexFormat.BC7 => true,
+        _ => false
+    };
+}
+
+public int GetBytesPerPixel(VTexFormat format)
+{
+    return format switch
+    {
+        VTexFormat.RGBA8888 or VTexFormat.BGRA8888 => 4,
+        VTexFormat.RGBA16161616 => 8,
+        VTexFormat.RGBA16161616F => 8,
+        VTexFormat.RGBA32323232F => 16,
+        VTexFormat.R8 or VTexFormat.I8 => 1,
+        VTexFormat.RG88 or VTexFormat.IA88 => 2,
+        _ => 0  // Block-compressed
+    };
+}
+```
+
+## See Also
+
+- [Compression Utilities](/api/utils/compression) - General compression utilities
+- [Texture](/api/resource-types/texture) - Texture resource format
+- [Extracting Textures](/guides/extracting-textures) - Texture extraction guide

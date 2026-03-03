@@ -1,0 +1,289 @@
+---
+title: VPK Browser
+description: Navigate, search, and manage VPK package archives in Source 2 Viewer
+---
+
+The VPK Browser is the main interface for exploring Valve Package (VPK) archives that contain game assets for Source 2 games.
+
+## Overview
+
+VPK files are archive formats used by Valve to package game content. Source 2 Viewer's VPK Browser provides a tree-based file explorer for navigating these archives and accessing individual assets.
+
+## Opening VPK Archives
+
+### Method 1: Game Explorer
+
+The Game Explorer automatically detects VPK files from installed Steam games:
+
+1. Launch Source 2 Viewer
+2. The Game Explorer appears on startup (if enabled in settings)
+3. Browse the list of detected games with icons
+4. Double-click a game to open its VPK archives
+
+<Note>
+The Game Explorer scans your Steam library automatically. You can add custom game paths in [Settings](/gui/settings) if games aren't detected.
+</Note>
+
+### Method 2: File Menu
+
+Manually browse for VPK files:
+
+1. Click **File > Open** (or press `Ctrl+O`)
+2. Navigate to the VPK file location
+3. Select the `_dir.vpk` file (the directory file)
+4. Click **Open**
+
+<Tip>
+Always open the `*_dir.vpk` file, not the numbered chunk files (`*_001.vpk`, etc.). The directory file provides access to the entire archive.
+</Tip>
+
+### Method 3: Drag and Drop
+
+Simply drag a VPK file or folder onto the Source 2 Viewer window to open it.
+
+## Navigating the File Tree
+
+### Tree View Interface
+
+The VPK Browser displays files in a hierarchical tree structure:
+
+- **Folders** - Represented with folder icons, click to expand/collapse
+- **Files** - Shown with file type icons based on extension
+- **Root Node** - Top-level node showing archive name and total size
+
+### File Selection
+
+- **Single Click** - Select a file to preview it in the viewer panel
+- **Double Click** - Open the file in its default viewer
+- **Right Click** - Show context menu with actions (export, extract, etc.)
+
+### Navigation Tips
+
+- Use arrow keys to navigate through the tree
+- Press `Enter` to open the selected file
+- Use `Ctrl+F` to open the search dialog
+- Folders show the number of contained files
+- Files display their size in the tree view
+
+## Search Functionality
+
+### Basic Search
+
+Search for files by name:
+
+1. Press `Ctrl+F` or use the search box
+2. Type the filename or partial name
+3. Results appear in the search results panel
+4. Click a result to navigate to the file in the tree
+
+### Filter by Extension
+
+Narrow search results to specific file types:
+
+```
+*.vtex     # Find all texture files
+*.vmdl     # Find all model files
+*.vmat     # Find all material files
+*.vmap_c   # Find all compiled map files
+```
+
+### Advanced Search
+
+- **Case sensitivity** - Searches are case-insensitive by default
+- **Wildcards** - Use `*` for pattern matching
+- **Regular expressions** - Enable regex for complex patterns
+- **Search history** - Recent searches are remembered
+
+<CardGroup cols={2}>
+  <Card title="Quick Search" icon="magnifying-glass">
+    Press `Ctrl+F` to instantly open search
+  </Card>
+  <Card title="Filter Results" icon="filter">
+    Use file extensions to narrow results
+  </Card>
+</CardGroup>
+
+## File Operations
+
+### Extracting Files
+
+Extract files from the VPK archive to your local filesystem:
+
+#### Single File Extraction
+
+1. Right-click the file in the tree
+2. Select **Extract** from the context menu
+3. Choose the destination folder
+4. Click **Save**
+
+#### Batch Extraction
+
+1. Right-click a folder in the tree
+2. Select **Extract All** from the context menu
+3. Choose the destination folder
+4. A progress dialog shows extraction status
+5. Click **OK** when complete
+
+<Warning>
+Extracting large folders may take time. The progress dialog displays the current file being extracted.
+</Warning>
+
+### Exporting with Conversion
+
+Export files to different formats:
+
+1. Right-click the file
+2. Select **Export** (or **Decompile** for compiled formats)
+3. Choose the output format from the dialog
+4. Select destination folder
+5. Click **Export**
+
+Supported export conversions:
+- **Textures** - Export to PNG, TGA, DDS, JPG, TIF
+- **Models** - Export to glTF 2.0 format
+- **Maps** - Export to glTF or decompile to VMAP
+- **Materials** - Decompile to VMAT format
+- **Audio** - Export to WAV, MP3
+
+### Viewing Files
+
+Preview files without extraction:
+
+1. Click a file in the tree
+2. The appropriate viewer opens in the main panel
+3. Use viewer-specific controls to interact with the asset
+
+See [Asset Viewer](/gui/asset-viewer) for details on viewing different file types.
+
+## Context Menu Actions
+
+Right-click files and folders to access these actions:
+
+| Action | Description |
+|--------|-------------|
+| **Open** | Open file in default viewer |
+| **Extract** | Extract raw file to disk |
+| **Export** | Export with format conversion |
+| **Decompile** | Convert compiled resource to source format |
+| **Copy Path** | Copy file path to clipboard |
+| **Copy Filename** | Copy filename to clipboard |
+| **Verify Checksum** | Check file integrity (if CRC available) |
+| **Show in Explorer** | Open containing folder (for extracted files) |
+
+<Note>
+Available actions depend on the file type. Not all actions are available for all files.
+</Note>
+
+## Archive Information
+
+### View Archive Statistics
+
+The VPK Browser displays useful information about the archive:
+
+- **Total Files** - Number of files in the archive
+- **Total Size** - Combined size of all files
+- **Archive Version** - VPK format version
+- **Chunk Files** - Number of data chunk files
+
+### File Details
+
+View details about individual files:
+
+- **Size** - File size in bytes, KB, or MB
+- **CRC** - Checksum for file verification
+- **Preload Size** - Size of preloaded data (if any)
+- **Archive Index** - Which chunk file contains the data
+
+## Deleted File Recovery
+
+Source 2 Viewer can recover deleted files that still exist in VPK archives:
+
+<Steps>
+  <Step title="Enable Deleted Files">
+    The browser automatically shows deleted files marked with special indicators
+  </Step>
+  <Step title="Identify Deleted Files">
+    Deleted files appear with a distinct icon or marking
+  </Step>
+  <Step title="Extract Deleted Files">
+    Use the same extraction process as regular files
+  </Step>
+</Steps>
+
+<Info>
+Deleted files may have corrupted or incomplete data. Verify extracted files after recovery.
+</Info>
+
+## Bookmarks and Recent Files
+
+### Bookmarking Files
+
+1. Right-click a frequently accessed file
+2. Select **Add Bookmark**
+3. Access bookmarks from **View > Bookmarks**
+
+### Recent Files
+
+Access recently opened VPK archives:
+
+1. Click **File > Recent Files**
+2. Select from the list of recent archives
+3. The archive opens immediately
+
+Recent files list stores up to 20 most recent archives.
+
+## Creating VPK Archives
+
+Source 2 Viewer supports creating new VPK archives:
+
+1. Click **File > New Package**
+2. Add files using **Add File** or drag-and-drop
+3. Organize files in folder structure
+4. Click **Save Package**
+5. Choose filename and location
+
+<Warning>
+Created VPK archives may not be compatible with Source 2 games without proper manifests and structure. Use for archival and extraction purposes.
+</Warning>
+
+## Performance Tips
+
+### Large Archives
+
+When working with large VPK archives:
+
+- **Use search** instead of browsing through thousands of files
+- **Extract specific folders** rather than entire archives
+- **Enable quick preview** only for smaller files
+- **Close unused tabs** to free memory
+
+### Quick Preview
+
+Enable or disable quick file preview in Settings:
+
+- **Enabled** - Files preview automatically when selected
+- **Disabled** - Double-click required to open viewer
+- **Auto-play sounds** - Toggle automatic audio playback
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+F` | Open search dialog |
+| `Ctrl+O` | Open VPK archive |
+| `Enter` | Open selected file |
+| `Delete` | Remove from recent files |
+| `Ctrl+C` | Copy file path |
+| `F5` | Refresh tree view |
+| `Backspace` | Navigate to parent folder |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Asset Viewer" icon="eye" href="/gui/asset-viewer">
+    Learn how to view different asset types
+  </Card>
+  <Card title="Settings" icon="gear" href="/gui/settings">
+    Configure VPK browser behavior and preferences
+  </Card>
+</CardGroup>

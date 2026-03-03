@@ -1,0 +1,253 @@
+---
+title: Features
+description: Complete feature list and capabilities of Source 2 Viewer GUI application
+---
+
+Source 2 Viewer provides comprehensive tools for browsing, viewing, and exporting Source 2 game assets.
+
+## Core Features
+
+<CardGroup cols={2}>
+  <Card title="3D Rendering" icon="cube">
+    Interactive viewer for maps, models, physics, and particles with PBR shaders and animation playback
+  </Card>
+  <Card title="VPK Management" icon="box-archive">
+    Browse and extract archives with advanced search, deleted file recovery, and archive creation
+  </Card>
+  <Card title="Texture Tools" icon="image">
+    Channel isolation, cubemap/HDR support, normal map visualization, SVG rasterization, and export
+  </Card>
+  <Card title="Export Systems" icon="file-export">
+    glTF 2.0 export for maps, models, physics, and animations with batch processing
+  </Card>
+</CardGroup>
+
+## 3D Rendering & Visualization
+
+### Model Viewer
+
+- **Interactive 3D rendering** with real-time camera controls
+- **PBR shader support** for physically-based materials
+- **Animation playback** with timeline controls
+- **Skeleton visualization** for rigged models
+- **Physics mesh display** for collision geometry
+- **Material preview** with texture channel inspection
+- **Mesh statistics** showing vertex and triangle counts
+
+### Map Viewer
+
+- **Full map rendering** with lighting and materials
+- **Entity inspection** to view entity properties and positions
+- **Saved camera positions** for returning to specific viewpoints
+- **Layer toggles** to show/hide different map elements
+- **Navigation mesh visualization** for AI pathfinding
+- **Performance statistics** including FPS counter
+
+### Particle System Viewer
+
+- **Real-time particle simulation** with accurate behavior
+- **Emitter visualization** showing spawn locations
+- **Timeline controls** for scrubbing through particle effects
+- **System statistics** displaying particle counts and performance
+
+## Texture & Image Tools
+
+### Texture Viewer
+
+- **Channel isolation** - View individual R, G, B, A channels
+- **Cubemap support** - Preview environment maps and skyboxes
+- **HDR visualization** - View high dynamic range textures
+- **Normal map preview** - Visualize tangent-space normals
+- **Mipmap inspection** - Browse through texture LOD levels
+- **Alpha blending controls** - Adjust transparency display
+- **Zoom and pan** - Examine textures at pixel level
+
+### Export Formats
+
+- PNG (Portable Network Graphics)
+- TGA (Targa)
+- DDS (DirectDraw Surface)
+- JPG (JPEG)
+- TIF (TIFF)
+
+## Audio Playback
+
+<CardGroup cols={2}>
+  <Card title="Audio Player" icon="music">
+    Built-in player supporting WAV, MP3, and Source 2 audio formats
+  </Card>
+  <Card title="Waveform Display" icon="waveform-lines">
+    Visual representation of audio with playback position indicator
+  </Card>
+</CardGroup>
+
+### Audio Features
+
+- Play/pause controls with seek bar
+- Volume adjustment with persistent settings
+- Waveform visualization
+- Format information display
+- Loop playback option
+- Export to standard audio formats
+
+## VPK Archive Browser
+
+See the [VPK Browser documentation](/gui/vpk-browser) for detailed information on archive management features.
+
+- Tree view navigation with folder hierarchy
+- Advanced search with filters by name and extension
+- File extraction (single or batch)
+- Deleted file recovery
+- Archive statistics and information
+- Recent files list
+- Bookmarking system
+
+## Decompilers
+
+### Map Decompiler
+
+- Converts compiled map files (`.vmap_c`) to editable VMAP format
+- Preserves entity data and properties
+- Exports brushes and geometry
+- Compatible with Hammer editor
+
+### Model Decompiler
+
+- Converts compiled models (`.vmdl_c`) to VMDL format
+- Preserves animations and skeleton data
+- Exports materials and textures
+- Compatible with ModelDoc
+
+### Material Decompiler
+
+- Converts compiled materials (`.vmat_c`) to VMAT format
+- Preserves shader parameters
+- Exports texture references
+- Compatible with material editors
+
+## Export & Conversion
+
+### glTF Export
+
+Export Source 2 assets to glTF 2.0 format for use in other software:
+
+- **Models** (`.vmdl`, `.vmesh`) with materials and textures
+- **Maps** (`.vmap`, `.vwrld`, `.vwnod`) with full geometry
+- **Physics meshes** with collision data
+- **Animations** with skeletal data
+- **Batch export** for processing multiple files
+
+glTF format is compatible with:
+- Blender
+- Maya
+- 3ds Max
+- Unity
+- Unreal Engine
+- Web-based 3D viewers
+
+## Shader Analysis
+
+- **Shader inspection** - View Source 2 shader files
+- **SPIRV bytecode conversion** - Convert compiled shaders
+- **Parameter display** - Show shader inputs and outputs
+- **Preprocessor directives** - View shader compilation options
+
+## File Format Support
+
+Source 2 Viewer supports viewing and exporting these resource types:
+
+### 3D & Rendering
+- `.vmdl` - Models
+- `.vmesh` - Mesh geometry
+- `.vanim` - Animations
+- `.vmat` - Materials
+- `.vtex` - Textures
+- `.vmap`, `.vwrld`, `.vwnod` - Maps
+- `.vphys` - Physics collision meshes
+
+### Effects & Audio
+- `.vpcf` - Particle systems
+- `.vsnd` - Sounds
+- `.vsndevts` - Sound events
+- `.vmix` - Audio mixing
+
+### Data & Scripts
+- `.vdata` - Data files
+- `.vjs` - Panorama scripts
+- `.vts` - Panorama TypeScript
+- `.vxml` - Panorama layouts
+- `.vcss` - Panorama styles
+- `.vcd` - Choreo scenes
+
+### Advanced
+- `.vanmgrph` - Animation graphs
+- `.vcs` - Compiled shaders
+- `.vsmart` - Smart props
+- `.vrr` - Response rules
+- Binary KeyValues (KV1, KV2, KV3)
+
+[View complete list of supported formats](/concepts/resource-types)
+
+## Additional Features
+
+### Game Explorer
+
+- **Automatic game detection** - Finds VPK files from all installed Steam games
+- **Game icons** - Shows game artwork for easy identification
+- **Quick access** - Double-click to open game archives
+- **Custom paths** - Add non-Steam game locations
+
+### Search System
+
+- **Fast file search** - Find files by name across entire archives
+- **Filter by extension** - Narrow results to specific file types
+- **Regular expressions** - Advanced pattern matching
+- **Search history** - Quick access to previous searches
+
+### User Interface
+
+- **Tabbed interface** - Open multiple files simultaneously
+- **Theme support** - Light and dark themes available
+- **Customizable layout** - Resizable panels and viewers
+- **Keyboard shortcuts** - Fast navigation and actions
+- **Drag and drop** - Open files by dropping them onto the window
+
+### Camera Controls
+
+- **WASD movement** - FPS-style navigation in 3D views
+- **Mouse look** - Click and drag to rotate camera
+- **Zoom** - Scroll wheel to move closer or farther
+- **Saved positions** - Bookmark camera locations for quick return
+- **Field of view adjustment** - Customize perspective
+
+### Performance
+
+- **Configurable quality** - Adjust rendering settings for performance
+- **Texture resolution limits** - Reduce memory usage
+- **MSAA anti-aliasing** - Smooth edges with minimal performance impact
+- **VSync options** - Eliminate screen tearing
+- **FPS counter** - Monitor rendering performance
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+O` | Open file |
+| `Ctrl+W` | Close tab |
+| `Ctrl+Tab` | Switch between tabs |
+| `Ctrl+F` | Search files |
+| `F` | Focus/frame selected object in 3D view |
+| `W/A/S/D` | Move camera in 3D view |
+| `Space` | Play/pause animation or audio |
+| `F11` | Toggle fullscreen |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="VPK Browser" icon="folder-tree" href="/gui/vpk-browser">
+    Learn how to navigate and manage VPK archives
+  </Card>
+  <Card title="Asset Viewer" icon="eye" href="/gui/asset-viewer">
+    Explore asset viewing capabilities in detail
+  </Card>
+</CardGroup>

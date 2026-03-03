@@ -1,0 +1,142 @@
+---
+title: CLI Overview
+description: Command-line utility for processing Source 2 resource files
+---
+
+The ValveResourceFormat CLI is a cross-platform command-line utility for processing, decompiling, and exporting Source 2 resource files. It provides a powerful interface for batch processing and automation.
+
+## What is the CLI?
+
+While Source 2 Viewer provides a graphical interface for Windows, the CLI tool is available for **Windows, Linux, and macOS**, making it ideal for:
+
+- **Batch processing** - Extract and decompile hundreds or thousands of files
+- **Automation** - Integrate into build pipelines and scripts
+- **Server environments** - Process files without a GUI
+- **Cross-platform workflows** - Work with Source 2 files on any operating system
+
+## Binary Name
+
+The executable is named `Source2Viewer-CLI` on all platforms.
+
+## Basic Usage
+
+<CodeGroup>
+```powershell Windows
+./Source2Viewer-CLI.exe -i "file.vtex_c" -o exported.png
+```
+
+```bash Linux/macOS
+./Source2Viewer-CLI -i "file.vtex_c" -o exported.png
+```
+</CodeGroup>
+
+Without additional arguments, the CLI displays a summary of the input file:
+
+```bash
+./Source2Viewer-CLI -i "file.vmdl_c"
+```
+
+## Key Features
+
+### File Type Support
+
+The CLI supports all Source 2 compiled resource formats:
+
+- **Textures** (`.vtex_c`) - Export to PNG, with customizable decode flags
+- **Models** (`.vmdl_c`, `.vmesh_c`) - Export to glTF/GLB format
+- **Materials** (`.vmat_c`) - Decompile to KeyValues format
+- **Particles** (`.vpcf_c`) - Extract particle definitions
+- **Panorama UI** (`.vxml_c`, `.vcss_c`, `.vjs_c`) - Decompile UI layouts and scripts
+- **Shaders** (`.vcs`) - Decompile shader programs
+- **Sounds** (`.vsnd_c`) - Extract audio metadata
+- **Maps** (`.vmap_c`) - Extract map data
+- **And many more** - See the [full list of supported formats](/concepts/resource-types)
+
+### VPK Archive Support
+
+The CLI can process Valve Pak (VPK) archives directly:
+
+- List all files in a VPK
+- Extract specific files or folders
+- Decompile files during extraction
+- Verify checksums and signatures
+- Use cached manifests for incremental exports
+
+### Performance
+
+- **Parallel processing** with `--threads` option for faster batch operations
+- **Filtered extraction** to process only the files you need
+- **Cached manifests** to skip unchanged files on subsequent exports
+
+## Common Workflows
+
+### Inspecting Files
+
+View resource blocks and metadata without extraction:
+
+```bash
+./Source2Viewer-CLI -i "file.vtex_c" --all
+```
+
+### Extracting from VPKs
+
+Extract and decompile Panorama UI files:
+
+```bash
+./Source2Viewer-CLI -i "pak01_dir.vpk" -e "vxml_c,vcss_c,vjs_c" -o "ui_export" -d
+```
+
+### Model Export
+
+Export a model to glTF with materials and animations:
+
+```bash
+./Source2Viewer-CLI -i "character.vmdl_c" -o "character.glb" -d \
+  --gltf_export_format glb \
+  --gltf_export_materials \
+  --gltf_export_animations
+```
+
+### Folder Processing
+
+Recursively process all compiled files in a folder:
+
+```bash
+./Source2Viewer-CLI -i "game/materials" -o "exported" --recursive -d
+```
+
+## Getting Help
+
+View all available options and usage information:
+
+```bash
+./Source2Viewer-CLI --help
+```
+
+Check the version:
+
+```bash
+./Source2Viewer-CLI --version
+```
+
+## Stability Notice
+
+<Warning>
+Command-line arguments and their behavior may change in future releases. We do not guarantee stability of the CLI interface. If you are writing scripts that depend on specific arguments or output formats, be prepared to update them when upgrading to newer versions.
+</Warning>
+
+## Source Code
+
+The CLI tool is open source and available on GitHub:
+[CLI/Decompiler.cs](https://github.com/ValveResourceFormat/ValveResourceFormat/blob/master/CLI/Decompiler.cs)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Command Reference" icon="terminal" href="/cli/commands">
+    Complete list of all command-line options and flags
+  </Card>
+  <Card title="Usage Examples" icon="code" href="/cli/examples">
+    Real-world examples for common tasks
+  </Card>
+</CardGroup>

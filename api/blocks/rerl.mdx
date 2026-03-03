@@ -1,0 +1,213 @@
+---
+title: RERL Block
+description: Resource External Reference List block for tracking external resource dependencies
+---
+
+The RERL (Resource External Reference List) block contains a list of external resources that this resource depends on. Each reference includes a 64-bit ID and a resource path.
+
+## Overview
+
+RERL blocks allow Source 2 resources to reference other resources by ID and path. This is essential for materials referencing textures, models referencing materials, and other cross-resource dependencies.
+
+## Block Type
+
+```csharp
+BlockType.RERL
+```
+
+## Class Structure
+
+```csharp
+public class ResourceExtRefList : Block
+{
+    public override BlockType Type => BlockType.RERL;
+    public List<ResourceReferenceInfo> ResourceRefInfoList { get; private set; }
+    
+    // Indexer for quick lookup by ID
+    public string? this[ulong id] { get; }
+}
+```
+
+## ResourceReferenceInfo
+
+Each external reference is represented by a `ResourceReferenceInfo` object:
+
+```csharp
+public class ResourceReferenceInfo
+{
+    public ulong Id { get; set; }
+    public required string Name { get; set; }
+}
+```
+
+### Properties
+
+#### Id
+
+A 64-bit unique identifier for the referenced resource.
+
+```csharp
+public ulong Id { get; set; }
+```
+
+#### Name
+
+The resource path (e.g., `"materials/default/default_normal.vtex"`).
+
+```csharp
+public required string Name { get; set; }
+```
+
+## Usage Example
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.Blocks;
+
+// Load a resource
+var resource = new Resource();
+resource.Read("path/to/material.vmat_c");
+
+// Get external references
+var extRefs = resource.ExternalReferences;
+
+if (extRefs != null && extRefs.ResourceRefInfoList.Count > 0)
+{
+    Console.WriteLine("External References:");
+    
+    foreach (var reference in extRefs.ResourceRefInfoList)
+    {
+        Console.WriteLine($"  ID: 0x{reference.Id:X16}");
+        Console.WriteLine($"  Path: {reference.Name}");
+    }
+}
+```
+
+## Looking Up References by ID
+
+```csharp
+var extRefs = resource.ExternalReferences;
+
+// Look up a resource by its ID
+ulong resourceId = 0x1234567890ABCDEF;
+string? resourcePath = extRefs?[resourceId];
+
+if (resourcePath != null)
+{
+    Console.WriteLine($"Resource {resourceId:X} -> {resourcePath}");
+}
+else
+{
+    Console.WriteLine($"Resource {resourceId:X} not found");
+}
+```
+
+## Iterating All References
+
+```csharp
+var extRefs = resource.ExternalReferences;
+
+if (extRefs != null)
+{
+    foreach (var refInfo in extRefs.ResourceRefInfoList)
+    {
+        // Process each reference
+        LoadExternalResource(refInfo.Name);
+    }
+}
+```
+
+## Empty Reference Lists
+
+Some resources may have an empty RERL block (no external dependencies):
+
+```csharp
+var extRefs = resource.ExternalReferences;
+
+if (extRefs == null || extRefs.ResourceRefInfoList.Count == 0)
+{
+    Console.WriteLine("No external dependencies");
+}
+```
+
+## Binary Format
+
+The RERL block uses a compact binary format:
+
+1. **Header**: Offset and count (2 x uint32)
+2. **Entries**: Array of reference entries
+   - Resource ID (uint64)
+   - Relative offset to name string (int64)
+3. **Strings**: Null-terminated UTF-8 resource paths
+
+## Serialization
+
+The block can be serialized back to binary:
+
+```csharp
+var extRefs = new ResourceExtRefList();
+extRefs.ResourceRefInfoList.Add(new ResourceReferenceInfo
+{
+    Id = 0x1234567890ABCDEF,
+    Name = "materials/models/texture.vtex"
+});
+
+using var stream = new MemoryStream();
+extRefs.Serialize(stream);
+```
+
+## Text Output
+
+```csharp
+using var writer = new IndentedTextWriter(Console.Out);
+extRefs.WriteText(writer);
+```
+
+Output format:
+```
+ResourceExtRefList_t
+{
+    Struct m_resourceRefInfoList[1] =
+    [
+        ResourceReferenceInfo_t
+        {
+            uint64 m_nId = 0x1234567890ABCDEF
+            CResourceString m_pResourceName = "materials/models/texture.vtex"
+        }
+    ]
+}
+```
+
+## Common Use Cases
+
+### Materials
+
+Material resources reference texture resources:
+
+```csharp
+var material = new Resource();
+material.Read("material.vmat_c");
+
+var textures = material.ExternalReferences?.ResourceRefInfoList
+    .Where(r => r.Name.EndsWith(".vtex"))
+    .ToList();
+```
+
+### Models
+
+Model resources reference materials and other assets:
+
+```csharp
+var model = new Resource();
+model.Read("model.vmdl_c");
+
+var materials = model.ExternalReferences?.ResourceRefInfoList
+    .Where(r => r.Name.EndsWith(".vmat"))
+    .ToList();
+```
+
+## See Also
+
+- [REDI Block](/api/blocks/redi) - Resource edit info and dependencies
+- [DATA Block](/api/blocks/data) - Main resource data
+- [Resource Class](/api/resource) - Main resource file structure

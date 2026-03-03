@@ -1,0 +1,212 @@
+---
+title: Model
+description: API reference for the Model resource type class
+---
+
+The `Model` class represents a model resource containing meshes, skeleton, and animations.
+
+## Properties
+
+<ResponseField name="Name" type="string">
+  Gets the model name.
+</ResponseField>
+
+<ResponseField name="KeyValues" type="KVObject">
+  Gets the key-values data from the model info.
+</ResponseField>
+
+<ResponseField name="Skeleton" type="Skeleton">
+  Gets the skeleton for this model.
+</ResponseField>
+
+<ResponseField name="FlexControllers" type="FlexController[]">
+  Gets the flex controllers for this model.
+</ResponseField>
+
+<ResponseField name="HitboxSets" type="Dictionary<string, Hitbox[]>">
+  Gets the hitbox sets for this model.
+</ResponseField>
+
+<ResponseField name="Attachments" type="Dictionary<string, Attachment>">
+  Gets the attachments for this model.
+</ResponseField>
+
+## Methods
+
+### GetRemapTable
+
+Get the bone remap table of a specific mesh. This is used to remap bone indices in the mesh VBIB to bone indices of the model skeleton.
+
+<ParamField path="meshIndex" type="int">
+  The index of the mesh.
+</ParamField>
+
+<ResponseField name="returns" type="int[]?">
+  Array of bone indices, or null if not available.
+</ResponseField>
+
+### GetReferenceMeshNamesAndLoD
+
+Gets referenced mesh names and their LoD masks.
+
+<ResponseField name="returns" type="IEnumerable<(int MeshIndex, string MeshName, long LoDMask)>">
+  Enumerable of mesh index, mesh name, and LoD mask tuples.
+</ResponseField>
+
+### GetEmbeddedMeshes
+
+Gets embedded meshes from the model.
+
+<ResponseField name="returns" type="IEnumerable<(Mesh Mesh, int MeshIndex, string Name)>">
+  Enumerable of mesh, mesh index, and name tuples.
+</ResponseField>
+
+### GetEmbeddedMeshesAndLoD
+
+Gets embedded meshes with their LoD masks.
+
+<ResponseField name="returns" type="IEnumerable<(Mesh Mesh, int MeshIndex, string Name, long LoDMask)>">
+  Enumerable of mesh, mesh index, name, and LoD mask tuples.
+</ResponseField>
+
+### GetEmbeddedPhys
+
+Gets embedded physics data from the model.
+
+<ResponseField name="returns" type="PhysAggregateData?">
+  The physics aggregate data, or null if not present.
+</ResponseField>
+
+### GetReferencedPhysNames
+
+Gets referenced physics data names.
+
+<ResponseField name="returns" type="IEnumerable<string>">
+  Enumerable of physics data names.
+</ResponseField>
+
+### GetReferencedAnimationGroupNames
+
+Gets referenced animation group names.
+
+<ResponseField name="returns" type="IEnumerable<string>">
+  Enumerable of animation group names.
+</ResponseField>
+
+### GetFaceposerFolders
+
+Gets the faceposer folders mapping animation names to folder names.
+
+<ResponseField name="returns" type="Dictionary<string, string>">
+  Dictionary mapping animation names to their folder names, or empty dictionary if no folders exist.
+</ResponseField>
+
+### GetEmbeddedAnimations
+
+Gets embedded animations from the model.
+
+<ResponseField name="returns" type="IEnumerable<Animation>">
+  Enumerable of animations.
+</ResponseField>
+
+### GetReferencedAnimations
+
+Gets animations referenced from other models.
+
+<ParamField path="fileLoader" type="IFileLoader">
+  The file loader to use.
+</ParamField>
+
+<ResponseField name="returns" type="IEnumerable<Animation>">
+  Enumerable of animations.
+</ResponseField>
+
+### GetAllAnimations
+
+Gets all animations from this model including embedded, referenced, and animation groups.
+
+<ParamField path="fileLoader" type="IFileLoader">
+  The file loader to use.
+</ParamField>
+
+<ResponseField name="returns" type="IEnumerable<Animation>">
+  Enumerable of all animations.
+</ResponseField>
+
+### GetMeshGroups
+
+Gets the mesh groups defined in the model.
+
+<ResponseField name="returns" type="IEnumerable<string>">
+  Enumerable of mesh group names.
+</ResponseField>
+
+### GetMaterialGroups
+
+Gets the material groups defined in the model.
+
+<ResponseField name="returns" type="IEnumerable<(string Name, string[] Materials)>">
+  Enumerable of material group names and their materials.
+</ResponseField>
+
+### GetDefaultMeshGroups
+
+Gets the default mesh groups based on the default mesh group mask.
+
+<ResponseField name="returns" type="IEnumerable<string>">
+  Enumerable of default mesh group names.
+</ResponseField>
+
+### SetExternalMorphData
+
+Populates cached flex controller data from an externally loaded morph resource.
+
+<ParamField path="morph" type="Morph?">
+  The morph data whose flex controllers should be reused.
+</ParamField>
+
+### SetExternalMeshData
+
+Populates cached mesh-related data (flex controllers, hitboxes, attachments) from an external mesh resource.
+
+<ParamField path="mesh" type="Mesh">
+  The mesh providing supplemental data.
+</ParamField>
+
+## Usage Example
+
+```csharp
+var resource = new Resource();
+var model = resource.DataBlock as Model;
+
+if (model != null)
+{
+    Console.WriteLine($"Model: {model.Name}");
+    Console.WriteLine($"Bones: {model.Skeleton.Bones.Length}");
+    
+    // Get embedded meshes
+    foreach (var (mesh, index, name) in model.GetEmbeddedMeshes())
+    {
+        Console.WriteLine($"Mesh {index}: {name}");
+    }
+    
+    // Get all animations
+    var fileLoader = new FileLoader();
+    foreach (var animation in model.GetAllAnimations(fileLoader))
+    {
+        Console.WriteLine($"Animation: {animation.Name}");
+    }
+    
+    // Access hitboxes
+    foreach (var (setName, hitboxes) in model.HitboxSets)
+    {
+        Console.WriteLine($"Hitbox set '{setName}': {hitboxes.Length} hitboxes");
+    }
+    
+    // Get mesh groups
+    foreach (var groupName in model.GetMeshGroups())
+    {
+        Console.WriteLine($"Mesh group: {groupName}");
+    }
+}
+```

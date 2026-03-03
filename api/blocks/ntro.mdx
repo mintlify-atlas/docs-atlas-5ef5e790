@@ -1,0 +1,326 @@
+---
+title: NTRO Block
+description: Resource Introspection Manifest providing type information and structure definitions
+---
+
+The NTRO (Resource Introspection Manifest) block provides runtime type information for resources. It defines the structure of data types, including fields, offsets, and type metadata, similar to reflection information.
+
+## Overview
+
+NTRO blocks contain schema information that describes how to interpret binary data structures in Source 2 resources. This introspection data is essential for reading legacy resource formats and understanding data layouts.
+
+## Block Type
+
+```csharp
+BlockType.NTRO
+```
+
+## Class Structure
+
+```csharp
+public class ResourceIntrospectionManifest : RawBinary
+{
+    public override BlockType Type => BlockType.NTRO;
+    
+    public uint IntrospectionVersion { get; private set; }
+    public List<ResourceDiskStruct> ReferencedStructs { get; }
+    public List<ResourceDiskEnum> ReferencedEnums { get; }
+}
+```
+
+## ResourceDiskStruct
+
+Defines a structure type with fields:
+
+```csharp
+public class ResourceDiskStruct
+{
+    public uint IntrospectionVersion { get; set; }
+    public uint Id { get; set; }
+    public required string Name { get; set; }
+    public uint DiskCrc { get; set; }
+    public int UserVersion { get; set; }
+    public ushort DiskSize { get; set; }
+    public ushort Alignment { get; set; }
+    public uint BaseStructId { get; set; }
+    public byte StructFlags { get; set; }
+    public List<Field> FieldIntrospection { get; private set; }
+}
+```
+
+### Field Definition
+
+```csharp
+public class Field
+{
+    public required string FieldName { get; set; }
+    public short Count { get; set; }
+    public short OnDiskOffset { get; set; }
+    public List<byte> Indirections { get; private set; }
+    public uint TypeData { get; set; }
+    public SchemaFieldType Type { get; set; }
+}
+```
+
+## ResourceDiskEnum
+
+Defines an enumeration type:
+
+```csharp
+public class ResourceDiskEnum
+{
+    public uint IntrospectionVersion { get; set; }
+    public uint Id { get; set; }
+    public required string Name { get; set; }
+    public uint DiskCrc { get; set; }
+    public int UserVersion { get; set; }
+    public List<Value> EnumValueIntrospection { get; private set; }
+}
+```
+
+### Enum Value
+
+```csharp
+public class Value
+{
+    public required string EnumValueName { get; set; }
+    public int EnumValue { get; set; }
+}
+```
+
+## Usage Example
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.Blocks;
+
+var resource = new Resource();
+resource.Read("resource.vtex_c");
+
+var ntro = resource.GetBlockByType(BlockType.NTRO) as ResourceIntrospectionManifest;
+
+if (ntro != null)
+{
+    Console.WriteLine($"Introspection Version: 0x{ntro.IntrospectionVersion:X8}");
+    
+    // List all structure definitions
+    Console.WriteLine($"\nStructures ({ntro.ReferencedStructs.Count}):");
+    foreach (var structDef in ntro.ReferencedStructs)
+    {
+        Console.WriteLine($"  {structDef.Name}");
+        Console.WriteLine($"    ID: 0x{structDef.Id:X8}");
+        Console.WriteLine($"    Size: {structDef.DiskSize} bytes");
+        Console.WriteLine($"    Alignment: {structDef.Alignment}");
+        Console.WriteLine($"    Fields: {structDef.FieldIntrospection.Count}");
+    }
+    
+    // List all enum definitions
+    Console.WriteLine($"\nEnums ({ntro.ReferencedEnums.Count}):");
+    foreach (var enumDef in ntro.ReferencedEnums)
+    {
+        Console.WriteLine($"  {enumDef.Name}");
+        Console.WriteLine($"    Values: {enumDef.EnumValueIntrospection.Count}");
+    }
+}
+```
+
+## Inspecting Structure Fields
+
+```csharp
+var ntro = resource.GetBlockByType(BlockType.NTRO) as ResourceIntrospectionManifest;
+
+foreach (var structDef in ntro.ReferencedStructs)
+{
+    Console.WriteLine($"\nStruct: {structDef.Name}");
+    
+    foreach (var field in structDef.FieldIntrospection)
+    {
+        Console.WriteLine($"  Field: {field.FieldName}");
+        Console.WriteLine($"    Type: {field.Type}");
+        Console.WriteLine($"    Offset: {field.OnDiskOffset}");
+        Console.WriteLine($"    Count: {field.Count}");
+        
+        if (field.Indirections.Count > 0)
+        {
+            Console.WriteLine($"    Indirections: {string.Join(", ", field.Indirections)}");
+        }
+    }
+}
+```
+
+## Reading Enum Values
+
+```csharp
+var ntro = resource.GetBlockByType(BlockType.NTRO) as ResourceIntrospectionManifest;
+
+foreach (var enumDef in ntro.ReferencedEnums)
+{
+    Console.WriteLine($"\nEnum: {enumDef.Name}");
+    Console.WriteLine($"  Version: {enumDef.UserVersion}");
+    Console.WriteLine($"  CRC: 0x{enumDef.DiskCrc:X8}");
+    
+    foreach (var value in enumDef.EnumValueIntrospection)
+    {
+        Console.WriteLine($"    {value.EnumValueName} = {value.EnumValue}");
+    }
+}
+```
+
+## Finding Structures by Name
+
+```csharp
+public ResourceDiskStruct? FindStruct(ResourceIntrospectionManifest ntro, string name)
+{
+    return ntro.ReferencedStructs.FirstOrDefault(s => s.Name == name);
+}
+
+// Usage
+var textureStruct = FindStruct(ntro, "TextureData_t");
+if (textureStruct != null)
+{
+    Console.WriteLine($"Found {textureStruct.Name}");
+    Console.WriteLine($"Size: {textureStruct.DiskSize} bytes");
+}
+```
+
+## SchemaFieldType Values
+
+Common field types include:
+
+- `STRUCT`: Nested structure
+- `ENUM`: Enumeration value
+- `INT8`, `INT16`, `INT32`, `INT64`: Signed integers
+- `UINT8`, `UINT16`, `UINT32`, `UINT64`: Unsigned integers
+- `FLOAT`, `DOUBLE`: Floating point
+- `BOOLEAN`: Boolean value
+- `STRING`: String reference
+- `VECTOR`: 3D vector
+- `QUATERNION`: Rotation quaternion
+- `MATRIX3X4`: Transformation matrix
+
+## Understanding Indirections
+
+Indirections represent pointer levels:
+
+```csharp
+var field = structDef.FieldIntrospection[0];
+
+if (field.Indirections.Count == 0)
+{
+    // Direct value
+    Console.WriteLine($"{field.FieldName} is a direct value");
+}
+else if (field.Indirections.Count == 1)
+{
+    // Single pointer
+    Console.WriteLine($"{field.FieldName} is a pointer");
+}
+else
+{
+    // Multiple indirection levels (pointer to pointer, etc.)
+    Console.WriteLine($"{field.FieldName} has {field.Indirections.Count} indirection levels");
+}
+```
+
+## Struct Inheritance
+
+Structures can inherit from base structures:
+
+```csharp
+foreach (var structDef in ntro.ReferencedStructs)
+{
+    if (structDef.BaseStructId != 0)
+    {
+        var baseStruct = ntro.ReferencedStructs
+            .FirstOrDefault(s => s.Id == structDef.BaseStructId);
+        
+        if (baseStruct != null)
+        {
+            Console.WriteLine($"{structDef.Name} inherits from {baseStruct.Name}");
+        }
+    }
+}
+```
+
+## Text Output
+
+```csharp
+using var writer = new IndentedTextWriter(Console.Out);
+ntro.WriteText(writer);
+```
+
+Output format:
+```
+CResourceIntrospectionManifest
+{
+    uint32 m_nIntrospectionVersion = 0x00000001
+    Struct m_ReferencedStructs[2] =
+    [
+        CResourceDiskStruct
+        {
+            uint32 m_nId = 0x12345678
+            CResourceString m_pName = "MyStruct_t"
+            uint16 m_nDiskSize = 0x0020
+            Struct m_FieldIntrospection[3] =
+            [
+                CResourceDiskStructField
+                {
+                    CResourceString m_pFieldName = "m_nValue"
+                    int16 m_nCount = 1
+                    int16 m_nOnDiskOffset = 0
+                    int16 m_nType = 3
+                }
+            ]
+        }
+    ]
+}
+```
+
+## Use Cases
+
+### Dynamic Data Reading
+
+Use NTRO to read unknown data structures:
+
+```csharp
+public object ReadStructField(byte[] data, ResourceDiskStruct.Field field)
+{
+    var offset = field.OnDiskOffset;
+    
+    return field.Type switch
+    {
+        SchemaFieldType.INT32 => BitConverter.ToInt32(data, offset),
+        SchemaFieldType.FLOAT => BitConverter.ToSingle(data, offset),
+        SchemaFieldType.BOOLEAN => data[offset] != 0,
+        _ => null
+    };
+}
+```
+
+### Schema Validation
+
+Verify structure versions and compatibility:
+
+```csharp
+var expectedCrc = 0x12345678u;
+var structDef = ntro.ReferencedStructs.FirstOrDefault(s => s.Name == "MyStruct_t");
+
+if (structDef != null && structDef.DiskCrc != expectedCrc)
+{
+    Console.WriteLine($"Warning: Schema mismatch for {structDef.Name}");
+    Console.WriteLine($"Expected CRC: 0x{expectedCrc:X8}, Got: 0x{structDef.DiskCrc:X8}");
+}
+```
+
+## Notes
+
+- NTRO blocks are mainly used for legacy resource formats
+- Modern resources often use KV3 format which doesn't require NTRO
+- Structure IDs and CRCs help detect schema changes
+- The introspection data is preserved as raw binary when serializing
+
+## See Also
+
+- [DATA Block](/api/blocks/data) - Main resource data that NTRO describes
+- [REDI Block](/api/blocks/redi) - Resource edit information
+- [RERL Block](/api/blocks/rerl) - External references

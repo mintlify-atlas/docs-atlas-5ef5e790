@@ -1,0 +1,196 @@
+---
+title: Resource Files
+description: Understanding the binary structure of Source 2 resource files
+---
+
+## Overview
+
+Source 2 resource files use a binary container format with the `_c` suffix (e.g., `vmdl_c`, `vmat_c`, `vtex_c`). Each resource file contains a header followed by one or more blocks of data.
+
+## File Structure
+
+The resource file format consists of:
+
+1. **File Header** - Metadata about the resource
+2. **Block Index** - Table of contents for all blocks
+3. **Block Data** - The actual data blocks
+
+### Header Format
+
+```csharp
+// From Resource.cs:182-209
+public void Read(Stream input)
+{
+    FileSize = Reader.ReadUInt32();              // Total file size
+    HeaderVersion = Reader.ReadUInt16();         // Must be 12
+    Version = Reader.ReadUInt16();               // File type version
+    var blockOffset = Reader.ReadUInt32();       // Offset to block table
+    var blockCount = Reader.ReadUInt32();        // Number of blocks
+    // ...
+}
+```
+
+<Note>
+The known header version is **12**. Files with different header versions are not valid Source 2 resources.
+</Note>
+
+### Header Fields
+
+<ResponseField name="FileSize" type="uint32">
+  Total size of the resource file in bytes
+</ResponseField>
+
+<ResponseField name="HeaderVersion" type="uint16">
+  Header format version (expected value: 12)
+</ResponseField>
+
+<ResponseField name="Version" type="uint16">
+  Resource type-specific version number
+</ResponseField>
+
+<ResponseField name="BlockOffset" type="uint32">
+  Offset from start of file to the block index table
+</ResponseField>
+
+<ResponseField name="BlockCount" type="uint32">
+  Number of blocks in this resource
+</ResponseField>
+
+## Block Index
+
+After the header, the block index table contains metadata for each block:
+
+```csharp
+// From Resource.cs:216-221
+for (var i = 0; i < blockCount; i++)
+{
+    var blockType = (BlockType)Reader.ReadUInt32();  // 4-byte block type
+    var offset = Reader.ReadUInt32();                 // Offset to block data
+    var size = Reader.ReadUInt32();                   // Block size
+}
+```
+
+Each block index entry is 12 bytes:
+- **Block Type** (4 bytes) - Four-character code (e.g., `DATA`, `RERL`, `REDI`)
+- **Offset** (4 bytes) - Relative offset from the block index entry to the block data
+- **Size** (4 bytes) - Size of the block in bytes
+
+## Loading a Resource
+
+```csharp
+using ValveResourceFormat;
+
+// Load from file
+using var resource = new Resource();
+resource.Read("materials/example.vmat_c");
+
+// Access resource metadata
+Console.WriteLine($"Resource Type: {resource.ResourceType}");
+Console.WriteLine($"Version: {resource.Version}");
+Console.WriteLine($"Block Count: {resource.Blocks.Count}");
+
+// Access specific blocks
+var dataBlock = resource.DataBlock;
+var editInfo = resource.EditInfo;
+var externalRefs = resource.ExternalReferences;
+```
+
+## File Size Calculation
+
+Some resource types (textures, sounds) have streaming data that comes after the main resource:
+
+```csharp
+// From Resource.cs:82-104
+public uint FullFileSize
+{
+    get
+    {
+        var size = FileSize;
+        
+        if (ResourceType == ResourceType.Sound && DataBlock is Sound dataSound)
+        {
+            size += dataSound.StreamingDataSize;
+        }
+        else if (ResourceType == ResourceType.Texture && DataBlock is Texture dataTexture)
+        {
+            size += (uint)dataTexture.CalculateTextureDataSize();
+        }
+        
+        return size;
+    }
+}
+```
+
+## Resource Types
+
+The resource type is determined by:
+
+1. **File extension** (e.g., `.vmat_c` → Material)
+2. **Compiler identifier** in the REDI block
+3. **Input dependencies** if only one exists
+
+<Tip>
+See [Resource Types](/concepts/resource-types) for a complete list of all 80+ resource types supported by Source 2.
+</Tip>
+
+## Key Properties
+
+<ResponseField name="ResourceType" type="ResourceType">
+  The type of resource (Material, Model, Texture, etc.)
+</ResponseField>
+
+<ResponseField name="Version" type="ushort">
+  Format version specific to this resource type
+</ResponseField>
+
+<ResponseField name="Blocks" type="List<Block>">
+  Collection of all blocks contained in this resource
+</ResponseField>
+
+<ResponseField name="DataBlock" type="Block">
+  The primary DATA block containing the main resource content
+</ResponseField>
+
+<ResponseField name="EditInfo" type="ResourceEditInfo">
+  The REDI or RED2 block with dependency and compilation metadata
+</ResponseField>
+
+<ResponseField name="ExternalReferences" type="ResourceExtRefList">
+  The RERL block containing references to other resources
+</ResponseField>
+
+## Example: Inspecting a Resource
+
+```csharp
+using var resource = new Resource();
+resource.Read("models/props/crate.vmdl_c");
+
+// Iterate through all blocks
+foreach (var block in resource.Blocks)
+{
+    Console.WriteLine($"Block Type: {block.Type}");
+    Console.WriteLine($"Offset: {block.Offset}");
+    Console.WriteLine($"Size: {block.Size}");
+    Console.WriteLine();
+}
+
+// Get external references
+if (resource.ExternalReferences != null)
+{
+    foreach (var refInfo in resource.ExternalReferences.ResourceRefInfoList)
+    {
+        Console.WriteLine($"Reference: {refInfo.Name}");
+    }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Blocks" icon="cube" href="/concepts/blocks">
+    Learn about the block-based structure (DATA, RERL, REDI, NTRO)
+  </Card>
+  <Card title="Resource Types" icon="file" href="/concepts/resource-types">
+    Explore the 80+ resource types in Source 2
+  </Card>
+</CardGroup>

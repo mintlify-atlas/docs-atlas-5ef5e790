@@ -1,0 +1,162 @@
+---
+title: Installation
+description: Install ValveResourceFormat NuGet packages for your C# project
+---
+
+# Installation
+
+ValveResourceFormat is distributed as NuGet packages. There are two packages available depending on your needs:
+
+- **ValveResourceFormat** - Core parsing library for reading and extracting Source 2 resources
+- **ValveResourceFormat.Renderer** - OpenGL-based rendering engine for visualizing 3D assets
+
+## Core Library
+
+The core library provides all the functionality needed to parse, read, and export Source 2 resource files.
+
+<CodeGroup>
+```bash .NET CLI
+dotnet add package ValveResourceFormat
+```
+
+```bash Package Manager
+Install-Package ValveResourceFormat
+```
+
+```xml PackageReference
+<PackageReference Include="ValveResourceFormat" Version="*" />
+```
+</CodeGroup>
+
+## Renderer Package (Optional)
+
+If you need to render 3D models, materials, and maps with OpenGL, install the renderer package:
+
+<CodeGroup>
+```bash .NET CLI
+dotnet add package ValveResourceFormat.Renderer
+```
+
+```bash Package Manager
+Install-Package ValveResourceFormat.Renderer
+```
+
+```xml PackageReference
+<PackageReference Include="ValveResourceFormat.Renderer" Version="*" />
+```
+</CodeGroup>
+
+<Note>
+The Renderer package automatically includes the core ValveResourceFormat library as a dependency.
+</Note>
+
+## Requirements
+
+### Target Framework
+
+ValveResourceFormat requires **.NET 10.0** or later:
+
+```xml .csproj
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+</Project>
+```
+
+### Platform Support
+
+- **Windows** - Full support (x64, ARM64)
+- **macOS** - Full support (x64, ARM64)
+- **Linux** - Full support (x64, ARM64)
+
+<Note>
+The library is AOT (Ahead-of-Time) compilation compatible, making it suitable for native deployments and trimmed applications.
+</Note>
+
+## Package Dependencies
+
+The core library includes these key dependencies:
+
+- **ValvePak** - For reading VPK package files
+- **ValveKeyValue** - For parsing KeyValues formats
+- **SkiaSharp** - For image processing and texture export
+- **SharpGLTF.Toolkit** - For glTF model export
+- **ZstdSharp.Port** - For Zstandard decompression
+- **K4os.Compression.LZ4** - For LZ4 decompression
+
+<Warning>
+Dependencies are managed automatically by NuGet. You don't need to install them manually.
+</Warning>
+
+## Unsafe Code
+
+The library uses unsafe code for performance-critical operations:
+
+```xml .csproj
+<PropertyGroup>
+  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+</PropertyGroup>
+```
+
+<Note>
+You don't need to enable unsafe blocks in your own project to use the library - this is only required within the ValveResourceFormat library itself.
+</Note>
+
+## Verify Installation
+
+After installation, verify the package is working:
+
+```csharp Program.cs
+using ValveResourceFormat;
+
+Console.WriteLine($"ValveResourceFormat loaded successfully!");
+Console.WriteLine($"Known header version: {Resource.KnownHeaderVersion}");
+```
+
+Expected output:
+```
+ValveResourceFormat loaded successfully!
+Known header version: 12
+```
+
+## Using Statements
+
+Add these common using statements to your files:
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.ResourceTypes;
+using ValveResourceFormat.IO;
+using SteamDatabase.ValvePak; // For VPK package reading
+```
+
+## NuGet Package Info
+
+<CardGroup cols={2}>
+  <Card title="ValveResourceFormat" icon="box" href="https://www.nuget.org/packages/ValveResourceFormat/">
+    Core parsing library on NuGet.org
+  </Card>
+  <Card title="ValveResourceFormat.Renderer" icon="cube" href="https://www.nuget.org/packages/ValveResourceFormat.Renderer/">
+    Rendering engine on NuGet.org
+  </Card>
+</CardGroup>
+
+## Source Code
+
+The library is open source under the MIT license:
+
+<Card title="GitHub Repository" icon="github" href="https://github.com/ValveResourceFormat/ValveResourceFormat">
+  View source, report issues, and contribute
+</Card>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Learn how to parse your first Source 2 resource
+  </Card>
+  <Card title="API Reference" icon="code" href="https://s2v.app/ValveResourceFormat/api/ValveResourceFormat.html">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>

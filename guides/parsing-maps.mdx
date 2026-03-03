@@ -1,0 +1,370 @@
+---
+title: Parsing Maps and Worlds
+description: Learn how to parse and extract Source 2 map and world files for editing in Hammer
+---
+
+The `MapExtract` class converts compiled map resources (vmap_c, vwrld_c) back to editable Hammer vmap format with all entities, world geometry, and assets.
+
+## Basic Map Extraction
+
+Extract a map resource to vmap format:
+
+<Steps>
+  <Step title="Load the map resource">
+    ```csharp
+    using ValveResourceFormat;
+    using ValveResourceFormat.IO;
+    
+    var resource = new Resource();
+    resource.Read("maps/example.vmap_c");
+    ```
+  </Step>
+
+  <Step title="Create MapExtract with file loader">
+    ```csharp
+    using var fileLoader = new GameFileLoader(package, fileName);
+    var mapExtract = new MapExtract(resource, fileLoader)
+    {
+        ProgressReporter = new Progress<string>(s => Console.WriteLine(s))
+    };
+    ```
+  </Step>
+
+  <Step title="Extract to ContentFile">
+    ```csharp
+    using var contentFile = mapExtract.ToContentFile();
+    ```
+  </Step>
+
+  <Step title="Save the vmap and assets">
+    ```csharp
+    // Save main vmap file
+    if (contentFile.Data != null)
+    {
+        File.WriteAllBytes(contentFile.FileName, contentFile.Data);
+    }
+    
+    // Save additional files (models, materials, etc.)
+    foreach (var additionalFile in contentFile.AdditionalFiles)
+    {
+        SaveContentFile(additionalFile);
+    }
+    ```
+  </Step>
+</Steps>
+
+<Note>
+`MapExtract` requires an `IFileLoader` to load map lumps, world nodes, entities, and dependencies.
+</Note>
+
+## Map Structure
+
+Source 2 maps consist of multiple lump files:
+
+```
+maps/example/
+├── world.vwrld_c          # Main world file
+├── world.vrman_c          # World resource manifest
+├── world_node_001.vwnod_c # World geometry nodes
+├── world_node_002.vwnod_c
+├── entities_000.vents_c   # Entity lumps
+└── world_physics.vrman_c  # Physics collision
+```
+
+## Loading World Resources
+
+```csharp
+using ValveResourceFormat.ResourceTypes;
+
+// Load world file directly
+var worldResource = new Resource();
+worldResource.Read("maps/example/world.vwrld_c");
+
+var world = (World)worldResource.DataBlock;
+
+// Get world node names
+var worldNodeNames = world.GetWorldNodeNames();
+foreach (var nodeName in worldNodeNames)
+{
+    Console.WriteLine($"World node: {nodeName}");
+}
+
+// Get entity lump names
+var entityLumpNames = world.GetEntityLumpNames();
+foreach (var lumpName in entityLumpNames)
+{
+    Console.WriteLine($"Entity lump: {lumpName}");
+}
+```
+
+## Getting Lump Folder
+
+Determine the map lump folder from a vmap_c file:
+
+```csharp
+var resource = new Resource();
+resource.Read("maps/example.vmap_c");
+
+var lumpFolder = MapExtract.GetLumpFolderFromVmapRERL(resource.ExternalReferences);
+Console.WriteLine($"Lump folder: {lumpFolder}");
+// Output: "maps/example"
+```
+
+## Loading World Physics
+
+Extract world physics collision:
+
+```csharp
+var mapExtract = new MapExtract(resource, fileLoader);
+
+var worldPhysics = mapExtract.LoadWorldPhysics();
+if (worldPhysics != null)
+{
+    Console.WriteLine($"Physics parts: {worldPhysics.Parts.Length}");
+    
+    foreach (var part in worldPhysics.Parts)
+    {
+        var shape = part.Shape;
+        Console.WriteLine($"  Hulls: {shape.Hulls.Length}");
+        Console.WriteLine($"  Meshes: {shape.Meshes.Length}");
+    }
+}
+```
+
+## Tool Textures for Collision
+
+Generate tool textures for physics surfaces:
+
+```csharp
+var surfaceTags = new HashSet<string> { "playerclip" };
+
+var toolTextureName = MapExtract.GetToolTextureShortenedName_ForInteractStrings(surfaceTags);
+Console.WriteLine($"Tool texture: tools{toolTextureName}");
+// Output: "toolsplayerclip"
+
+var materialPath = MapExtract.GetToolTextureNameForCollisionTags(
+    new ModelExtract.SurfaceTagCombo { InteractAsStrings = surfaceTags }
+);
+Console.WriteLine($"Material: {materialPath}");
+// Output: "materials/tools/toolsplayerclip.vmat"
+```
+
+## Auto-Apply Tool Textures
+
+Get tool textures automatically applied to entity brushes:
+
+```csharp
+var toolTexture = MapExtract.GetToolTextureForEntity("trigger_multiple");
+Console.WriteLine($"Auto-apply: {toolTexture}");
+// Output: "materials/tools/toolstrigger.vmat"
+
+// Entity types with auto-apply materials:
+// - trigger_* -> toolstrigger.vmat
+// - func_nav_blocker -> toolsnavattribute.vmat
+// - func_precipitation -> toolsprecipitation.vmat
+// - post_processing_volume -> tools_postprocess_volume.vmat
+```
+
+## Converting to Valve Map Format
+
+Generate raw vmap binary data:
+
+```csharp
+var mapExtract = new MapExtract(resource, fileLoader);
+var vmapBytes = mapExtract.ToValveMap();
+
+File.WriteAllBytes("output.vmap", vmapBytes);
+```
+
+## Working with World Nodes
+
+World nodes contain scene objects and aggregates:
+
+```csharp
+using ValveResourceFormat.ResourceTypes;
+
+var worldNodeResource = fileLoader.LoadFile("maps/example/world_node_001.vwnod_c");
+var worldNode = (WorldNode)worldNodeResource.DataBlock;
+
+// Scene objects (static props)
+Console.WriteLine($"Scene objects: {worldNode.SceneObjects.Count}");
+foreach (var sceneObject in worldNode.SceneObjects)
+{
+    var modelName = sceneObject.GetProperty<string>("m_renderableModel");
+    var transform = sceneObject.GetArray("m_vTransform").ToMatrix4x4();
+    var tintColor = sceneObject.GetSubCollection("m_vTintColor").ToVector4();
+    
+    Console.WriteLine($"  Model: {modelName}");
+    Console.WriteLine($"  Tint: {tintColor}");
+}
+
+// Aggregate scene objects (instanced geometry)
+Console.WriteLine($"Aggregates: {worldNode.AggregateSceneObjects.Count}");
+foreach (var aggregate in worldNode.AggregateSceneObjects)
+{
+    var modelName = aggregate.GetProperty<string>("m_renderableModel");
+    var fragmentCount = aggregate.GetArray("m_aggregateMeshes").Length;
+    
+    Console.WriteLine($"  Model: {modelName}");
+    Console.WriteLine($"  Fragments: {fragmentCount}");
+}
+```
+
+## Physics Vertex Matching
+
+Match physics meshes to world geometry:
+
+```csharp
+var mapExtract = new MapExtract(resource, fileLoader);
+var contentFile = mapExtract.ToContentFile();
+
+var physVertexMatcher = mapExtract.PhysVertexMatcher;
+if (physVertexMatcher != null)
+{
+    Console.WriteLine($"Physics meshes tracked: {physVertexMatcher.PhysicsMeshes.Length}");
+}
+```
+
+## Generating Auto Physics Materials
+
+Create materials for physics surface properties:
+
+```csharp
+var materialName = MapExtract.GetAutoPhysicsMaterialName(
+    rootFolder: "maps/example",
+    surfaceProperty: "concrete"
+);
+Console.WriteLine(materialName);
+// Output: "maps/example/_vrf/physics_surfaces/concrete.vmat"
+```
+
+## Complete Map Extraction Example
+
+Extract a complete map with all assets:
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.IO;
+using SteamDatabase.ValvePak;
+
+// Setup
+using var package = new Package();
+package.Read("pak01_dir.vpk");
+
+using var fileLoader = new GameFileLoader(package, "pak01_dir.vpk");
+
+// Load map
+var resource = fileLoader.LoadFile("maps/example.vmap_c");
+if (resource == null)
+{
+    Console.WriteLine("Map not found");
+    return;
+}
+
+// Extract with progress reporting
+var progress = new Progress<string>(message =>
+{
+    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {message}");
+});
+
+var mapExtract = new MapExtract(resource, fileLoader)
+{
+    ProgressReporter = progress
+};
+
+using var contentFile = mapExtract.ToContentFile();
+
+// Save main vmap
+var outputDir = "extracted/maps/example";
+Directory.CreateDirectory(outputDir);
+
+var vmapPath = Path.Combine(outputDir, contentFile.FileName);
+File.WriteAllBytes(vmapPath, contentFile.Data);
+Console.WriteLine($"Saved: {vmapPath}");
+
+// Save sub-files (additional vmap parts)
+foreach (var subFile in contentFile.SubFiles)
+{
+    var subPath = Path.Combine(outputDir, subFile.FileName);
+    File.WriteAllBytes(subPath, subFile.Extract());
+    Console.WriteLine($"Saved: {subPath}");
+}
+
+// Save additional files (models, materials, etc.)
+foreach (var additionalFile in contentFile.AdditionalFiles)
+{
+    if (additionalFile.Data != null && !string.IsNullOrEmpty(additionalFile.FileName))
+    {
+        var assetPath = Path.Combine("extracted", additionalFile.FileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(assetPath));
+        File.WriteAllBytes(assetPath, additionalFile.Data);
+        Console.WriteLine($"Saved: {assetPath}");
+    }
+    
+    // Save asset sub-files (textures, meshes)
+    foreach (var subFile in additionalFile.SubFiles)
+    {
+        var fileName = Path.GetFileName(subFile.FileName);
+        var dir = Path.GetDirectoryName(additionalFile.FileName) ?? "";
+        var subPath = Path.Combine("extracted", dir, fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(subPath));
+        File.WriteAllBytes(subPath, subFile.Extract());
+    }
+}
+
+Console.WriteLine("Map extraction complete!");
+```
+
+## Entity Processing
+
+Maps contain entity lumps with game entities:
+
+```csharp
+using ValveResourceFormat.ResourceTypes;
+
+var entityLumpResource = fileLoader.LoadFile("maps/example/entities_000.vents_c");
+var entityLump = (EntityLump)entityLumpResource.DataBlock;
+
+foreach (var entity in entityLump.GetEntities())
+{
+    var className = entity.GetProperty<string>("classname");
+    var origin = entity.GetVector3Property("origin");
+    var angles = entity.GetVector3Property("angles");
+    
+    Console.WriteLine($"Entity: {className}");
+    Console.WriteLine($"  Origin: {origin}");
+    Console.WriteLine($"  Angles: {angles}");
+    
+    // Access entity properties
+    foreach (var (key, value) in entity.Properties)
+    {
+        Console.WriteLine($"  {key} = {value}");
+    }
+}
+```
+
+<Warning>
+Map extraction can be memory intensive for large maps:
+```csharp
+// Monitor progress and consider processing in chunks
+var progress = new Progress<string>(message =>
+{
+    Console.WriteLine(message);
+    if (message.Contains("autosplit"))
+    {
+        Console.WriteLine("Large map detected, creating additional vmap files");
+    }
+});
+```
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Exporting Models" icon="cube" href="/guides/exporting-models">
+    Export models referenced in maps
+  </Card>
+  <Card title="Decompiling Materials" icon="palette" href="/guides/decompiling-materials">
+    Extract materials used in maps
+  </Card>
+</CardGroup>

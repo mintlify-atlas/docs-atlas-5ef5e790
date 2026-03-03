@@ -1,0 +1,360 @@
+---
+title: Resource Types
+description: Overview of 80+ Source 2 resource types
+---
+
+## Overview
+
+Source 2 supports over 80 different resource types, each identified by a file extension. All compiled resources end with `_c` suffix.
+
+## Common Resource Types
+
+### Models and Meshes
+
+<ResponseField name="vmdl_c" type="Model">
+  3D model created in the ModelDoc Editor. Contains mesh references, materials, animations, and physics data.
+</ResponseField>
+
+<ResponseField name="vmesh_c" type="Mesh">
+  Mesh geometry. Legacy format - mesh data is now typically stored in vmdl files.
+</ResponseField>
+
+<ResponseField name="vmorf_c" type="Morph">
+  Morph set containing blend shapes and flex data for facial animation.
+</ResponseField>
+
+### Materials and Textures
+
+<ResponseField name="vmat_c" type="Material">
+  Material definition created in the Material Editor. References textures and defines shader parameters.
+</ResponseField>
+
+<ResponseField name="vtex_c" type="Texture">
+  Compiled texture in various formats (DXT, BC7, etc.). May contain mipmaps and streaming data.
+</ResponseField>
+
+<ResponseField name="vcompmat_c" type="CompositeMaterial">
+  Composite material kit for CS2 weapon skins.
+</ResponseField>
+
+### Animation
+
+<ResponseField name="vanmgrph_c" type="AnimationGraph">
+  Animgraph 1 graph for animation behavior and states.
+</ResponseField>
+
+<ResponseField name="vnmgraph_c" type="NmGraph">
+  Animgraph 2 graph for animation behavior. Graph variations have a `.vnmgraph.+variationname` suffix.
+</ResponseField>
+
+<ResponseField name="vnmclip_c" type="NmClip">
+  Animgraph 2 animation clip. Can contain events to respond from graphs.
+</ResponseField>
+
+<ResponseField name="vnmskel_c" type="NmSkeleton">
+  Animgraph 2 skeleton. Used for skeleton(s) and bonemask data.
+</ResponseField>
+
+<ResponseField name="vnmikrig_c" type="NmIKRig">
+  Animgraph 2 IK rig. Can contain IK rig data.
+</ResponseField>
+
+### World and Maps
+
+<ResponseField name="vwrld_c" type="World">
+  World root file containing references to world nodes and global settings.
+</ResponseField>
+
+<ResponseField name="vwnod_c" type="WorldNode">
+  World node referencing map geometry and scene objects.
+</ResponseField>
+
+<ResponseField name="vents_c" type="EntityLump">
+  Entity lump containing map entities with their properties and connections.
+</ResponseField>
+
+<ResponseField name="vmap_c" type="Map">
+  Map definition file created in Hammer.
+</ResponseField>
+
+<ResponseField name="vvis_c" type="WorldVisibility">
+  World visibility data stored in voxel clusters for occlusion culling.
+</ResponseField>
+
+### Particles and Effects
+
+<ResponseField name="vpcf_c" type="Particle">
+  Particle system created in the Particle Editor.
+</ResponseField>
+
+<ResponseField name="vsnap_c" type="ParticleSnapshot">
+  Particle snapshot reference.
+</ResponseField>
+
+<ResponseField name="vpost_c" type="PostProcessing">
+  Post-processing settings created in the Postprocessing Editor.
+</ResponseField>
+
+### Audio
+
+<ResponseField name="vsnd_c" type="Sound">
+  Sound file or sound container. May contain streaming audio data.
+</ResponseField>
+
+<ResponseField name="vsndevts_c" type="SoundEventScript">
+  Sound event script defining sound events.
+</ResponseField>
+
+<ResponseField name="vsndstck_c" type="SoundStackScript">
+  Sound stack script with rules and operators for sound events.
+</ResponseField>
+
+<ResponseField name="vmix_c" type="VMix">
+  Mix graph for audio mixing created in the VMix Tool.
+</ResponseField>
+
+### Panorama UI
+
+<ResponseField name="vxml_c" type="PanoramaLayout">
+  Panorama XML layout defining UI structure.
+</ResponseField>
+
+<ResponseField name="vcss_c" type="PanoramaStyle">
+  Panorama CSS style defining UI appearance.
+</ResponseField>
+
+<ResponseField name="vjs_c" type="PanoramaScript">
+  Panorama JavaScript for UI logic.
+</ResponseField>
+
+<ResponseField name="vts_c" type="PanoramaTypescript">
+  Panorama TypeScript for UI logic.
+</ResponseField>
+
+<ResponseField name="vsvg_c" type="PanoramaVectorGraphic">
+  Panorama SVG vector graphic.
+</ResponseField>
+
+<ResponseField name="vpdi_c" type="PanoramaDynamicImages">
+  Panorama dynamic images manifest.
+</ResponseField>
+
+### Physics
+
+<ResponseField name="vphys_c" type="PhysicsCollisionMesh">
+  Physics collision mesh using the Rubikon physics engine.
+</ResponseField>
+
+### Game Data
+
+<ResponseField name="vdata_c" type="VData">
+  Generic data for game content like weapons, heroes, and abilities.
+</ResponseField>
+
+<ResponseField name="vrr_c" type="ResponseRules">
+  Response rules for voiceline playback.
+</ResponseField>
+
+<ResponseField name="vcdlist_c" type="ChoreoSceneFileData">
+  Choreo scene file data combining multiple VCD files.
+</ResponseField>
+
+<ResponseField name="vcd_c" type="ChoreoSceneResource">
+  Choreo scene file for scripted sequences.
+</ResponseField>
+
+### Other Types
+
+<ResponseField name="vrman_c" type="ResourceManifest">
+  Resource manifest for preloading assets.
+</ResponseField>
+
+<ResponseField name="vsmart_c" type="SmartProp">
+  Smart prop with defined rules and parameters in the VData Editor.
+</ResponseField>
+
+<ResponseField name="vpulse_c" type="PulseGraphDef">
+  Pulse graph definition created in the Pulse Editor.
+</ResponseField>
+
+<ResponseField name="vfont_c" type="BitmapFont">
+  Bitmap font resource.
+</ResponseField>
+
+<ResponseField name="vsurf_c" type="SurfaceProperties">
+  Surface properties for materials.
+</ResponseField>
+
+<ResponseField name="vcs_c" type="Shader">
+  Compiled shader. Stored in `shaders_{platform}_dir.vpk`.
+</ResponseField>
+
+## Game-Specific Types
+
+### Counter-Strike 2
+
+<ResponseField name="econitem_c" type="EconItem">
+  CS2 economy item created in the CS2 Item Editor.
+</ResponseField>
+
+### Dota 2
+
+<ResponseField name="herolist_c" type="DotaHeroList">
+  Dota 2 hero list.
+</ResponseField>
+
+<ResponseField name="vdpn_c" type="DotaPatchNotes">
+  Dota 2 patch notes.
+</ResponseField>
+
+<ResponseField name="vdvn_c" type="DotaVisualNovels">
+  Dota 2 visual novels.
+</ResponseField>
+
+### S&box
+
+<ResponseField name="sbox" type="SboxManagedResource">
+  S&box managed resource of any type. Can have any extension.
+</ResponseField>
+
+<ResponseField name="shader_c" type="SboxShader">
+  S&box shader resource.
+</ResponseField>
+
+## Determining Resource Type
+
+The library determines the resource type using multiple methods:
+
+```csharp
+// From Resource.cs:201-288
+// 1. By file extension
+ResourceType = ResourceTypeExtensions.DetermineByFileExtension(
+    Path.GetExtension(FileName.AsSpan())
+);
+
+// 2. By compiler identifier in REDI block
+foreach (var specialDep in EditInfo.SpecialDependencies)
+{
+    ResourceType = DetermineResourceTypeByCompilerIdentifier(specialDep);
+    if (ResourceType != ResourceType.Unknown) break;
+}
+
+// 3. By input dependency extension if only one exists
+if (ResourceType == ResourceType.Unknown && EditInfo.InputDependencies.Count == 1)
+{
+    ResourceType = ResourceTypeExtensions.DetermineByFileExtension(
+        Path.GetExtension(EditInfo.InputDependencies[0].ContentRelativeFilename)
+    );
+}
+```
+
+## Compiler Identifiers
+
+Some common compiler identifier mappings:
+
+```csharp
+// From Resource.cs:587-643
+"CompileAnimgraph" => ResourceType.AnimationGraph
+"CompileRenderMesh" => ResourceType.Mesh
+"CompileTexture" => ResourceType.Texture
+"CompileMaterial" => ResourceType.Material
+"CompileModel" => ResourceType.Model
+"CompileParticle" => ResourceType.Particle
+"CompileWorld" => ResourceType.World
+"CompileVPhysXData" => ResourceType.PhysicsCollisionMesh
+"CompileSmartProp" => ResourceType.SmartProp
+"CompilePanorama" => ResourceType.Panorama (with subtype detection)
+```
+
+## Block Construction by Type
+
+Different resource types construct different DATA blocks:
+
+```csharp
+// From Resource.cs:535-567
+ResourceType switch
+{
+    ResourceType.AnimationGraph => new AnimGraph(),
+    ResourceType.NmClip => new AnimationClip(),
+    ResourceType.EntityLump => new EntityLump(),
+    ResourceType.Map => new Map(),
+    ResourceType.Material => new Material(),
+    ResourceType.Mesh => new Mesh(),
+    ResourceType.Model => new Model(),
+    ResourceType.Morph => new Morph(),
+    ResourceType.Panorama => new Panorama(),
+    ResourceType.Particle => new ParticleSystem(),
+    ResourceType.PhysicsCollisionMesh => new PhysAggregateData(),
+    ResourceType.PostProcessing => new PostProcessing(),
+    ResourceType.Sound => new Sound(),
+    ResourceType.Texture => new Texture(),
+    ResourceType.World => new World(),
+    ResourceType.WorldNode => new WorldNode(),
+    // ... many more
+}
+```
+
+## Example: Working with Resource Types
+
+```csharp
+using ValveResourceFormat;
+
+// Load a resource
+using var resource = new Resource();
+resource.Read("materials/dev/dev_metal.vmat_c");
+
+// Check resource type
+if (resource.ResourceType == ResourceType.Material)
+{
+    var material = (Material)resource.DataBlock;
+    // Work with material data
+}
+
+// Access type-specific data
+switch (resource.ResourceType)
+{
+    case ResourceType.Texture:
+        var texture = (Texture)resource.DataBlock;
+        // Extract texture data
+        break;
+        
+    case ResourceType.Model:
+        var model = (Model)resource.DataBlock;
+        // Access model meshes
+        break;
+        
+    case ResourceType.Sound:
+        var sound = (Sound)resource.DataBlock;
+        // Extract audio data
+        break;
+}
+```
+
+## Legacy Types
+
+Some resource types are marked as legacy:
+
+- **vanim_c** (Animation) - Data now stored in vmdl files
+- **vagrp_c** (AnimationGroup) - Data now stored in vmdl files  
+- **vseq_c** (Sequence) - Data now stored in vmdl files
+- **vmesh_c** (Mesh) - Data now stored in vmdl files
+- **vpsf_c** (ParticleSnapshotLegacy) - Replaced by vsnap
+
+<Warning>
+Legacy resource types may have limited support or may be fully deprecated in newer Source 2 versions.
+</Warning>
+
+## Complete Enum Definition
+
+The complete `ResourceType` enum is defined in `ValveResourceFormat/Resource/Enums/ResourceType.cs` with over 60 distinct types.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Blocks" icon="cube" href="/concepts/blocks">
+    Understand block structure in resources
+  </Card>
+  <Card title="Binary KeyValues" icon="brackets-curly" href="/concepts/binary-keyvalues">
+    Learn about KV1 and KV3 data formats
+  </Card>
+</CardGroup>

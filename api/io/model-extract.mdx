@@ -1,0 +1,294 @@
+---
+title: ModelExtract
+description: Extract Source 2 models to editable vmdl/dmx format
+---
+
+The `ModelExtract` class extracts Source 2 models to editable vmdl (Valve Model) and dmx (Datamodel Exchange) formats.
+
+## Constructor
+
+```csharp
+public ModelExtract(
+    Resource modelResource,
+    IFileLoader fileLoader
+)
+```
+
+<ParamField path="modelResource" type="Resource" required>
+  The model resource to extract. Must contain a Model data block.
+</ParamField>
+
+<ParamField path="fileLoader" type="IFileLoader" required>
+  File loader for resolving mesh, animation, and physics dependencies.
+</ParamField>
+
+### Alternate Constructors
+
+#### Single Mesh Extraction
+
+```csharp
+public ModelExtract(
+    Mesh mesh,
+    string meshFileName
+)
+```
+
+Extract a single mesh to vmdl+dmx.
+
+<ParamField path="mesh" type="Mesh" required>
+  The mesh data to extract.
+</ParamField>
+
+<ParamField path="meshFileName" type="string" required>
+  File name of the mesh (e.g., "models/my_mesh.vmesh").
+</ParamField>
+
+#### Physics Extraction
+
+```csharp
+public ModelExtract(
+    PhysAggregateData physAggregateData,
+    string physFileName
+)
+```
+
+Extract physics data to vmdl+dmx.
+
+<ParamField path="physAggregateData" type="PhysAggregateData" required>
+  Physics aggregate data.
+</ParamField>
+
+<ParamField path="physFileName" type="string" required>
+  File name for the physics file.
+</ParamField>
+
+## Properties
+
+<ParamField path="Type" type="ModelExtractType">
+  Gets the extraction type to apply when generating assets. Default: `ModelExtractType.Default`
+  
+  **Values:**
+  - `Default` - Standard model extraction
+  - `Map_PhysicsToRenderMesh` - Convert physics meshes to render meshes
+  - `Map_AggregateSplit` - Split aggregate physics data
+</ParamField>
+
+<ParamField path="ModelName" type="string" readOnly>
+  Gets the model name from either the model resource or the file name.
+</ParamField>
+
+## Methods
+
+### ToContentFile
+
+```csharp
+public ContentFile ToContentFile()
+```
+
+Converts the model to a content file with associated meshes and animations.
+
+**Returns:** `ContentFile` - Content file containing vmdl data with mesh/animation DMX files as subfiles.
+
+**Generated Files:**
+- Main vmdl file with model definition
+- DMX files for render meshes
+- DMX files for physics hulls/meshes
+- DMX files for animations
+
+### ToValveModel
+
+```csharp
+public string ToValveModel()
+```
+
+Converts the model to Valve model format as a string.
+
+**Returns:** `string` - Model definition in KeyValues3 format (modeldoc28).
+
+## Helper Types
+
+### ModelExtractType (enum)
+
+Specifies the type of model extraction.
+
+- `Default` - Standard model extraction
+- `Map_PhysicsToRenderMesh` - Convert physics to render mesh (for map compilation)
+- `Map_AggregateSplit` - Split aggregate physics data
+
+### ImportFilter (record struct)
+
+Filter configuration for import operations.
+
+<ParamField path="ExcludeByDefault" type="bool">
+  Whether to exclude items by default.
+</ParamField>
+
+<ParamField path="Filter" type="HashSet<string>">
+  Set of items to include/exclude based on ExcludeByDefault.
+</ParamField>
+
+## Model File Structure
+
+The generated vmdl file includes:
+
+### Core Components
+- **RenderMeshList** - References to DMX mesh files
+- **Skeleton** - Bone hierarchy and transforms
+- **BodyGroupList** - Mesh visibility groups
+- **MaterialGroupList** - Material remapping and skins
+
+### Animation Data
+- **AnimationList** - Animation files and metadata
+- **PoseParamList** - Pose parameters for blending
+- **AnimBindPose** - Bind pose animations
+- **AnimIncludeModel** - References to external animation models
+
+### Physics
+- **PhysicsShapeList** - Physics shapes (hulls, meshes, spheres, capsules)
+- Surface properties and collision tags
+- Bone-attached physics shapes
+
+### Additional Features
+- **AttachmentList** - Attachment points with influences
+- **HitboxSetList** - Hitbox definitions for collision
+- **WeightListList** - Bone weight masks
+- **BoneConstraintList** - Bone constraints (aim, orient, parent, etc.)
+- **GameDataList** - Game-specific data (prop_data, vr_carry_type, etc.)
+- **ModelModifierList** - Model modifiers like translation
+
+## Usage Examples
+
+### Basic Model Extraction
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.IO;
+
+var resource = new Resource();
+resource.Read("models/props/example.vmdl_c");
+
+var fileLoader = new GameFileLoader("path/to/game");
+var extractor = new ModelExtract(resource, fileLoader);
+var contentFile = extractor.ToContentFile();
+
+// Write vmdl file
+if (contentFile.Data != null)
+{
+    File.WriteAllBytes("example.vmdl", contentFile.Data);
+}
+
+// Write mesh/animation DMX files
+foreach (var subFile in contentFile.SubFiles)
+{
+    var data = subFile.Extract?.Invoke();
+    if (data != null)
+    {
+        File.WriteAllBytes(subFile.FileName, data);
+    }
+}
+```
+
+### Extract Single Mesh
+
+```csharp
+var meshResource = new Resource();
+meshResource.Read("models/mesh.vmesh_c");
+var mesh = (Mesh)meshResource.DataBlock;
+
+var extractor = new ModelExtract(mesh, "models/mesh.vmesh");
+var contentFile = extractor.ToContentFile();
+```
+
+### Map Physics Extraction
+
+```csharp
+var extractor = new ModelExtract(resource, fileLoader)
+{
+    Type = ModelExtractType.Map_PhysicsToRenderMesh
+};
+
+var contentFile = extractor.ToContentFile();
+// Physics meshes are converted to render meshes for use in map compilation
+```
+
+## Generated VMDL Example
+
+```
+rootNode
+{
+    RootNode
+    {
+        children
+        [
+            RenderMeshList
+            {
+                children
+                [
+                    RenderMeshFile
+                    {
+                        name = "mesh_01"
+                        filename = "mesh_01.dmx"
+                    }
+                ]
+            },
+            Skeleton
+            {
+                children
+                [
+                    Bone
+                    {
+                        name = "root"
+                        origin = [ 0.0, 0.0, 0.0 ]
+                        angles = [ 0.0, 0.0, 0.0 ]
+                        do_not_discard = true
+                        children
+                        [
+                            Bone { name = "spine" ... }
+                        ]
+                    }
+                ]
+            },
+            BodyGroupList
+            {
+                children
+                [
+                    BodyGroup
+                    {
+                        name = "body"
+                        children
+                        [
+                            BodyGroupChoice
+                            {
+                                meshes = [ "mesh_01" ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            PhysicsShapeList
+            {
+                children
+                [
+                    PhysicsHullFile
+                    {
+                        filename = "phys_hull.dmx"
+                        surface_prop = "metal"
+                        collision_tags = "solid"
+                    }
+                ]
+            }
+        ]
+    }
+}
+```
+
+## Notes
+
+- The extractor automatically resolves referenced meshes, animations, and physics files
+- Embedded and referenced meshes are both supported
+- Bone constraints are properly converted from compiled to source format
+- Animation events, auto-layers, and blend layers are preserved
+- Physics shapes include spheres, capsules, hulls, and meshes with proper materials
+- Game-specific data structures are extracted and preserved
+- Hitboxes support multiple shapes (box, capsule, sphere)
+- The format version is modeldoc28 (KeyValues3)

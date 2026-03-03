@@ -1,0 +1,315 @@
+---
+title: MaterialExtract
+description: Extract Source 2 materials to editable vmat format
+---
+
+The `MaterialExtract` class extracts Source 2 materials to editable vmat (Valve Material) format with associated texture files.
+
+## Constructor
+
+```csharp
+public MaterialExtract(
+    Material material,
+    ResourceEditInfo? editInfo,
+    IFileLoader? fileLoader,
+    IShaderDataProvider? shaderDataProvider = null
+)
+```
+
+<ParamField path="material" type="Material" required>
+  The material data to extract.
+</ParamField>
+
+<ParamField path="editInfo" type="ResourceEditInfo?">
+  Resource edit information containing metadata.
+</ParamField>
+
+<ParamField path="fileLoader" type="IFileLoader?">
+  File loader for resolving texture dependencies.
+</ParamField>
+
+<ParamField path="shaderDataProvider" type="IShaderDataProvider?">
+  Provider for shader-specific data. Defaults to `BasicShaderDataProvider`.
+</ParamField>
+
+### Alternate Constructor
+
+```csharp
+public MaterialExtract(
+    Resource resource,
+    IFileLoader? fileLoader = null
+)
+```
+
+<ParamField path="resource" type="Resource" required>
+  The material resource to extract. Must contain a Material data block.
+</ParamField>
+
+<ParamField path="fileLoader" type="IFileLoader?">
+  File loader for resolving dependencies. If provided, uses `ShaderDataProvider`.
+</ParamField>
+
+## Methods
+
+### ToContentFile
+
+```csharp
+public ContentFile ToContentFile()
+```
+
+Converts the material to a content file with associated textures.
+
+**Returns:** `ContentFile` - Content file containing vmat data with texture files in AdditionalFiles.
+
+**Behavior:**
+- Generates vmat KeyValues format file
+- Loads and unpacks referenced textures
+- Extracts texture channels into separate material maps
+- Skips default textures and uniform-only textures when appropriate
+
+### ToValveMaterial
+
+```csharp
+public string ToValveMaterial()
+```
+
+Converts the material to Valve material format as a string.
+
+**Returns:** `string` - Material definition in KeyValues1 text format.
+
+**Format includes:**
+- Layer0 with shader name
+- Integer, float, and vector parameters
+- Texture parameters (unpacked to individual maps)
+- Dynamic expressions
+- Attributes and system attributes
+- Tool attributes (e.g., SubrectDefinition)
+- Original compiled texture paths for reference
+
+### GetTextureUnpackInfos
+
+```csharp
+public IEnumerable<UnpackInfo> GetTextureUnpackInfos(
+    string textureType,
+    string texturePath,
+    Texture? texture,
+    bool omitDefaults,
+    bool omitUniforms
+)
+```
+
+Gets the texture unpacking information for a material texture parameter.
+
+<ParamField path="textureType" type="string" required>
+  The material's texture parameter name (e.g., "g_tColor").
+</ParamField>
+
+<ParamField path="texturePath" type="string" required>
+  Path to the compiled texture file.
+</ParamField>
+
+<ParamField path="texture" type="Texture?">
+  Loaded texture data, or null if not available.
+</ParamField>
+
+<ParamField path="omitDefaults" type="bool" required>
+  Whether to skip default textures (materials/default/*).
+</ParamField>
+
+<ParamField path="omitUniforms" type="bool" required>
+  Whether to skip textures that have uniform vector overrides.
+</ParamField>
+
+**Returns:** `IEnumerable<UnpackInfo>` - Information about how to unpack texture channels.
+
+## Static Methods
+
+### OutTextureName
+
+```csharp
+public static string OutTextureName(
+    string texturePath,
+    bool keepOriginalExtension,
+    bool hdr,
+    string? desiredSuffix = null
+)
+```
+
+Generates the output texture file name from a compiled texture path.
+
+<ParamField path="texturePath" type="string" required>
+  Path to the compiled texture (must end with .vtex).
+</ParamField>
+
+<ParamField path="keepOriginalExtension" type="bool" required>
+  Whether to preserve the original file extension from the hash.
+</ParamField>
+
+<ParamField path="hdr" type="bool" required>
+  Whether this is an HDR texture (determines .exr vs .png).
+</ParamField>
+
+<ParamField path="desiredSuffix" type="string?">
+  Optional suffix to append (e.g., "_rough", "_metal").
+</ParamField>
+
+**Returns:** `string` - The generated output file name.
+
+**Logic:**
+- Strips `.vtex` extension and `.generated` suffix
+- Attempts to extract original filename from hash-based naming
+- Replaces texture type suffixes when desiredSuffix is provided
+- Adds appropriate image extension (.exr or .png)
+
+## Helper Types
+
+### UnpackInfo (struct)
+
+Information about how to unpack a texture channel.
+
+<ParamField path="TextureType" type="string">
+  The texture parameter name for the unpacked channel.
+</ParamField>
+
+<ParamField path="FileName" type="string">
+  The output file name for this unpacked texture.
+</ParamField>
+
+<ParamField path="Channel" type="ChannelMapping">
+  Which channel(s) to extract from the source texture.
+</ParamField>
+
+## Usage Examples
+
+### Basic Material Extraction
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.IO;
+
+var resource = new Resource();
+resource.Read("materials/example.vmat_c");
+
+var fileLoader = new GameFileLoader("path/to/game");
+var extractor = new MaterialExtract(resource, fileLoader);
+var contentFile = extractor.ToContentFile();
+
+// Write vmat file
+if (contentFile.Data != null)
+{
+    File.WriteAllBytes("example.vmat", contentFile.Data);
+}
+
+// Write texture files
+foreach (var additionalFile in contentFile.AdditionalFiles)
+{
+    if (additionalFile.Data != null)
+    {
+        File.WriteAllBytes(additionalFile.FileName, additionalFile.Data);
+    }
+    
+    // Write texture subfiles (actual images)
+    foreach (var subFile in additionalFile.SubFiles)
+    {
+        var data = subFile.Extract?.Invoke();
+        if (data != null)
+        {
+            File.WriteAllBytes(subFile.FileName, data);
+        }
+    }
+}
+```
+
+### Get Material as String
+
+```csharp
+var resource = new Resource();
+resource.Read("materials/example.vmat_c");
+
+var extractor = new MaterialExtract(resource);
+string vmatText = extractor.ToValveMaterial();
+
+File.WriteAllText("example.vmat", vmatText);
+```
+
+### Custom Texture Unpacking
+
+```csharp
+var material = (Material)resource.DataBlock;
+var editInfo = resource.EditInfo;
+var extractor = new MaterialExtract(material, editInfo, fileLoader);
+
+// Get unpack info for a specific texture
+var texture = fileLoader.LoadFileCompiled("materials/texture.vtex_c");
+var textureData = texture?.DataBlock as Texture;
+
+var unpackInfos = extractor.GetTextureUnpackInfos(
+    "g_tColor",
+    "materials/texture.vtex",
+    textureData,
+    omitDefaults: true,
+    omitUniforms: false
+);
+
+foreach (var info in unpackInfos)
+{
+    Console.WriteLine($"{info.TextureType}: {info.FileName} ({info.Channel})");
+}
+```
+
+## Material Format
+
+The generated vmat file follows this structure:
+
+```
+Layer0
+{
+    shader "vr_complex.vfx"
+    
+    // Integer parameters
+    F_ALPHA_TEST "1"
+    
+    // Float parameters  
+    g_flMetalness "0.500000"
+    
+    // Vector parameters
+    g_vColorTint "[1.000000 1.000000 1.000000 1.000000]"
+    
+    // Unpacked textures
+    TextureColor "materials/example_color.png"
+    TextureRoughness "materials/example_rough.png"
+    
+    // Original compiled textures (for reference)
+    "Compiled Textures"
+    {
+        g_tColor "materials/example_color.vtex"
+    }
+    
+    // Dynamic expressions
+    DynamicParams
+    {
+        g_flSomeParam "0.5 + sin(time)"
+    }
+    
+    // Attributes
+    Attributes
+    {
+        surfacepropertyname "metal"
+    }
+    
+    // System attributes
+    SystemAttributes
+    {
+        physicssurfaceproperties "metal"
+    }
+}
+```
+
+## Notes
+
+- The class automatically unpacks packed texture channels (e.g., roughness/metalness/AO)
+- Default textures from `materials/default/` can be optionally omitted
+- Textures with uniform vector overrides can be skipped to reduce file size
+- Original compiled texture paths are preserved in a "Compiled Textures" section
+- The shader data provider determines how textures are unpacked based on shader type
+- Layered material names (e.g., TextureColorA vs TextureColor) are properly handled

@@ -1,0 +1,136 @@
+---
+title: BinaryKV3
+description: API reference for the BinaryKV3 resource type class
+---
+
+The `BinaryKV3` class represents a binary KeyValues3 data block.
+
+## Properties
+
+<ResponseField name="Data" type="KVObject">
+  Gets the deserialized KeyValues3 data.
+</ResponseField>
+
+<ResponseField name="Encoding" type="KV3ID?">
+  Gets the encoding identifier for this KV3 data.
+</ResponseField>
+
+<ResponseField name="Format" type="KV3ID">
+  Gets the format identifier for this KV3 data.
+</ResponseField>
+
+## Methods
+
+### GetKV3File
+
+Gets the KeyValues3 data as a KV3File object.
+
+<ResponseField name="returns" type="KV3File">
+  A KV3File object containing the data and format.
+</ResponseField>
+
+### IsBinaryKV3 (static)
+
+Checks if the given magic number represents a binary KV3 format.
+
+<ParamField path="magic" type="uint">
+  The magic number to check.
+</ParamField>
+
+<ResponseField name="returns" type="bool">
+  True if the magic number is a valid binary KV3 format.
+</ResponseField>
+
+### ConvertBinaryKV3ToText (static)
+
+Converts binary KV3 data to text format. This method is exposed for unmanaged callers.
+
+<ParamField path="dataPtr" type="IntPtr">
+  Pointer to the binary KV3 data.
+</ParamField>
+
+<ParamField path="dataLength" type="int">
+  Length of the binary data.
+</ParamField>
+
+<ResponseField name="returns" type="IntPtr">
+  Pointer to the text representation of the KV3 data.
+</ResponseField>
+
+## Constants
+
+<ResponseField name="MAGIC0" type="int" value="0x03564B56">
+  Magic number for VKV3 format.
+</ResponseField>
+
+<ResponseField name="MAGIC1" type="int" value="0x4B563301">
+  Magic number for KV3 version 1.
+</ResponseField>
+
+<ResponseField name="MAGIC2" type="int" value="0x4B563302">
+  Magic number for KV3 version 2.
+</ResponseField>
+
+<ResponseField name="MAGIC3" type="int" value="0x4B563303">
+  Magic number for KV3 version 3.
+</ResponseField>
+
+<ResponseField name="MAGIC4" type="int" value="0x4B563304">
+  Magic number for KV3 version 4.
+</ResponseField>
+
+<ResponseField name="MAGIC5" type="int" value="0x4B563305">
+  Magic number for KV3 version 5.
+</ResponseField>
+
+## Usage Example
+
+```csharp
+var resource = new Resource();
+var binaryKV3 = resource.DataBlock as BinaryKV3;
+
+if (binaryKV3 != null)
+{
+    Console.WriteLine($"Format: {binaryKV3.Format}");
+    Console.WriteLine($"Encoding: {binaryKV3.Encoding}");
+    
+    // Access the data
+    var data = binaryKV3.Data;
+    Console.WriteLine($"Root properties: {data.Properties.Count}");
+    
+    // Iterate through properties
+    foreach (var property in data.Properties)
+    {
+        Console.WriteLine($"{property.Key}: {property.Value}");
+    }
+    
+    // Get specific properties
+    if (data.ContainsKey("m_name"))
+    {
+        var name = data.GetProperty<string>("m_name");
+        Console.WriteLine($"Name: {name}");
+    }
+    
+    // Get arrays
+    var arrayData = data.GetArray("m_someArray");
+    foreach (var item in arrayData)
+    {
+        Console.WriteLine($"Array item: {item}");
+    }
+    
+    // Convert to KV3File for text output
+    var kv3File = binaryKV3.GetKV3File();
+    using var writer = new StringWriter();
+    kv3File.WriteText(new IndentedTextWriter(writer));
+    Console.WriteLine(writer.ToString());
+}
+
+// Check if data is binary KV3
+using var stream = File.OpenRead("data.vdata_c");
+using var reader = new BinaryReader(stream);
+var magic = reader.ReadUInt32();
+if (BinaryKV3.IsBinaryKV3(magic))
+{
+    Console.WriteLine("This is a binary KV3 file");
+}
+```

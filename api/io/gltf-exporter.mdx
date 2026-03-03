@@ -1,0 +1,286 @@
+---
+title: GltfModelExporter
+description: Export Valve resources to glTF 2.0 format
+---
+
+The `GltfModelExporter` class exports Valve Source 2 resources to glTF 2.0 format, supporting models, meshes, worlds, animations, and physics.
+
+## Constructor
+
+```csharp
+public GltfModelExporter(IFileLoader fileLoader)
+```
+
+<ParamField path="fileLoader" type="IFileLoader" required>
+  File loader for resolving resource dependencies (meshes, textures, materials, etc.).
+</ParamField>
+
+## Properties
+
+<ParamField path="ProgressReporter" type="IProgress<string>" required>
+  Progress reporter for export operations. Must be set before calling Export.
+</ParamField>
+
+<ParamField path="FileLoader" type="IFileLoader" readOnly>
+  Gets the file loader for loading referenced resources.
+</ParamField>
+
+<ParamField path="ExportAnimations" type="bool">
+  Whether to export animations. Default: `true`
+</ParamField>
+
+<ParamField path="ExportMaterials" type="bool">
+  Whether to export materials. Default: `true`
+</ParamField>
+
+<ParamField path="AdaptTextures" type="bool">
+  Whether to adapt textures for glTF compatibility. Default: `true`
+  
+  When enabled, converts packed texture channels to glTF-compatible formats.
+</ParamField>
+
+<ParamField path="SatelliteImages" type="bool">
+  Whether to save satellite images separately. Default: `true`
+  
+  When true, images are saved as separate files. When false, images are embedded in the glTF file.
+</ParamField>
+
+<ParamField path="ExportExtras" type="bool">
+  Whether to export extra data. Default: `false`
+  
+  When enabled, includes entity properties and other metadata in glTF extras.
+</ParamField>
+
+<ParamField path="AnimationFilter" type="HashSet<string>" readOnly>
+  Set of animation names to filter during export. Only specified animations are exported.
+</ParamField>
+
+<ParamField path="MeshFilter" type="HashSet<string>" readOnly>
+  Set of mesh names to filter during export. Filter does not apply to vmesh resources.
+</ParamField>
+
+## Methods
+
+### Export
+
+```csharp
+public void Export(
+    Resource resource,
+    string? targetPath,
+    CancellationToken cancellationToken = default
+)
+```
+
+Export a Valve resource to glTF.
+
+<ParamField path="resource" type="Resource" required>
+  The resource being exported.
+</ParamField>
+
+<ParamField path="targetPath" type="string?">
+  Target file name. If null, validates the export without writing files.
+</ParamField>
+
+<ParamField path="cancellationToken" type="CancellationToken">
+  Optional task cancellation token.
+</ParamField>
+
+**Supported Resource Types:**
+- `Mesh` (vmesh) - Individual mesh
+- `Model` (vmdl) - Complete model with skeleton and animations
+- `WorldNode` (vwnod) - World node with scene objects
+- `World` (vwrld) - Complete world/map
+- `Map` (vmap) - Map file (loads world automatically)
+- `EntityLump` (vents) - Entity list
+- `PhysicsCollisionMesh` (vphys) - Physics collision data
+- `NmClip` - Animation clip
+
+**Throws:**
+- `InvalidOperationException` - If called while another export is in progress
+- `ArgumentException` - If resource type is not supported
+- `FileNotFoundException` - If required dependencies cannot be loaded
+
+### CanExport (static)
+
+```csharp
+public static bool CanExport(Resource resource)
+```
+
+Determines whether the specified resource can be exported to glTF.
+
+<ParamField path="resource" type="Resource" required>
+  The resource to check.
+</ParamField>
+
+**Returns:** `bool` - True if the resource type is supported for export.
+
+## Coordinate System
+
+The exporter automatically converts from Source 2's coordinate system to glTF:
+
+- **Source 2:** Right-handed, Z-up, inches
+- **glTF:** Right-handed, Y-up, meters
+- **Conversion:** Scales by 0.0254 (inches to meters) and swaps Y/Z axes
+
+## Material Export
+
+Materials are converted to glTF PBR materials with the following mappings:
+
+- **g_tColor** → Base Color texture
+- **g_tNormal** → Normal Map texture
+- **Packed textures** → Separate maps (roughness, metalness, AO)
+- **g_vColorTint** → Base Color Factor
+- **Shader parameters** → Material properties
+
+When `AdaptTextures` is enabled, packed texture channels are automatically separated.
+
+## Animation Export
+
+Animations are exported with:
+- Skeletal transformations (position, rotation)
+- Morph target animations (flex/shape keys)
+- Animation events (in extras, if `ExportExtras` is true)
+- Frame rate and timing information
+
+Use `AnimationFilter` to export specific animations only.
+
+## Usage Examples
+
+### Export Model to glTF
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.IO;
+
+var resource = new Resource();
+resource.Read("models/props/example.vmdl_c");
+
+var fileLoader = new GameFileLoader("path/to/game");
+var exporter = new GltfModelExporter(fileLoader)
+{
+    ProgressReporter = new Progress<string>(msg => Console.WriteLine(msg)),
+    ExportAnimations = true,
+    ExportMaterials = true
+};
+
+exporter.Export(resource, "output/example.gltf");
+```
+
+### Export with Filters
+
+```csharp
+var exporter = new GltfModelExporter(fileLoader)
+{
+    ProgressReporter = new Progress<string>(msg => Console.WriteLine(msg))
+};
+
+// Only export specific animations
+exporter.AnimationFilter.Add("idle");
+exporter.AnimationFilter.Add("walk");
+
+// Only export specific meshes
+exporter.MeshFilter.Add("body");
+exporter.MeshFilter.Add("head");
+
+exporter.Export(resource, "output/filtered.gltf");
+```
+
+### Export World/Map
+
+```csharp
+var mapResource = new Resource();
+mapResource.Read("maps/example.vmap_c");
+
+var exporter = new GltfModelExporter(fileLoader)
+{
+    ProgressReporter = new Progress<string>(msg => Console.WriteLine(msg)),
+    ExportExtras = true // Include entity properties
+};
+
+exporter.Export(mapResource, "output/map.glb");
+// Separate physics file will be created at output/map_physics.glb
+```
+
+### Export to Binary GLB
+
+```csharp
+// Use .glb extension for binary format
+exporter.Export(resource, "output/model.glb");
+// All textures and data embedded in single .glb file
+```
+
+### Export with Separate Textures
+
+```csharp
+var exporter = new GltfModelExporter(fileLoader)
+{
+    ProgressReporter = new Progress<string>(msg => Console.WriteLine(msg)),
+    SatelliteImages = true // Textures saved as separate files
+};
+
+exporter.Export(resource, "output/model.gltf");
+// Creates: model.gltf, model.bin, texture1.png, texture2.png, etc.
+```
+
+### Validate Export Without Writing
+
+```csharp
+// Pass null as targetPath to validate without writing files
+try
+{
+    exporter.Export(resource, null);
+    Console.WriteLine("Export validation successful");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Export would fail: {ex.Message}");
+}
+```
+
+### Export with Cancellation
+
+```csharp
+using var cts = new CancellationTokenSource();
+cts.CancelAfter(TimeSpan.FromSeconds(30)); // 30 second timeout
+
+try
+{
+    exporter.Export(resource, "output/model.gltf", cts.Token);
+}
+catch (OperationCanceledException)
+{
+    Console.WriteLine("Export cancelled");
+}
+```
+
+## Physics Export
+
+Physics data is exported separately:
+- Models with embedded physics → `{filename}_physics.{ext}`
+- Maps/worlds with physics → `{filename}_physics.{ext}`
+- Physics meshes use simplified materials (solid colors)
+
+## Lighting Export
+
+Environment lights from maps are exported using `KHR_lights_punctual` extension:
+- Directional lights for `light_environment` entities
+- Intensity converted from Watts to Lumens
+- Color space converted from sRGB to linear
+
+## Limitations
+
+- GLB files are limited to 2GB due to glTF specification
+- For large exports (>=2GB), use `.gltf` format instead of `.glb`
+- Some Source 2 shader features may not have glTF equivalents
+- Multi-threaded export is not supported (do not call Export concurrently)
+
+## Notes
+
+- The exporter automatically loads world data from vmap files
+- Entity lumps and world nodes are properly assembled into complete scenes
+- Cubemap textures are converted to equirectangular projections for HDR
+- Aggregate meshes (map fragments) are properly instantiated with transforms
+- Tint colors from entities are applied to materials
+- Bone remapping tables are handled automatically
+- Morph targets (flex data) are exported as glTF morph targets
+- The exporter uses SharpGLTF for glTF file generation

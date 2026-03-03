@@ -1,0 +1,280 @@
+---
+title: REDI Block
+description: Resource Edit Info block containing dependency information and editor metadata
+---
+
+The REDI (Resource Edit Info) block stores metadata used by Valve's resource compiler and editor tools. It tracks input files, dependencies, compilation arguments, and other build-related information.
+
+## Overview
+
+REDI blocks provide the resource compiler with information about how a resource was built and what files it depends on. This is crucial for incremental compilation and maintaining asset pipelines.
+
+## Block Type
+
+```csharp
+BlockType.REDI
+```
+
+## Class Structure
+
+```csharp
+public class ResourceEditInfo : RawBinary
+{
+    public override BlockType Type => BlockType.REDI;
+    
+    public List<InputDependency> InputDependencies { get; }
+    public List<InputDependency> AdditionalInputDependencies { get; }
+    public List<ArgumentDependency> ArgumentDependencies { get; }
+    public List<SpecialDependency> SpecialDependencies { get; }
+    public List<AdditionalRelatedFile> AdditionalRelatedFiles { get; }
+    public List<string> ChildResourceList { get; }
+    public KVObject SearchableUserData { get; }
+}
+```
+
+## Dependency Types
+
+### InputDependency
+
+Represents a source file that was used to compile this resource.
+
+```csharp
+public class InputDependency
+{
+    public string ContentRelativeFilename { get; set; }
+    public string ContentSearchPath { get; set; }
+    public uint FileCRC { get; set; }
+    public uint? Flags { get; set; }
+}
+```
+
+**Example**: A model compiled from `models/props/barrel.fbx`
+
+### ArgumentDependency
+
+Tracks compilation arguments that affect the output.
+
+```csharp
+public class ArgumentDependency
+{
+    public string ParameterName { get; set; }
+    public string ParameterValue { get; set; }
+    public uint Fingerprint { get; set; }
+    public uint? FingerprintDefault { get; set; }
+}
+```
+
+**Example**: Texture compression settings like `"textureFormat": "DXT5"`
+
+### SpecialDependency
+
+Special compiler dependencies like tool versions or system files.
+
+```csharp
+public class SpecialDependency
+{
+    public string String { get; set; }
+    public string CompilerIdentifier { get; set; }
+    public uint Fingerprint { get; set; }
+    public uint? UserData { get; set; }
+}
+```
+
+### AdditionalRelatedFile
+
+Other files related to this resource.
+
+```csharp
+public class AdditionalRelatedFile
+{
+    public string ContentRelativeFilename { get; set; }
+    public string ContentSearchPath { get; set; }
+}
+```
+
+## Usage Example
+
+```csharp
+using ValveResourceFormat;
+using ValveResourceFormat.Blocks;
+
+var resource = new Resource();
+resource.Read("compiled_model.vmdl_c");
+
+var editInfo = resource.EditInfo;
+
+if (editInfo != null)
+{
+    // List input files
+    Console.WriteLine("Input Files:");
+    foreach (var input in editInfo.InputDependencies)
+    {
+        Console.WriteLine($"  {input.ContentRelativeFilename}");
+        Console.WriteLine($"  Search Path: {input.ContentSearchPath}");
+        Console.WriteLine($"  CRC: 0x{input.FileCRC:X8}");
+    }
+    
+    // List compilation arguments
+    Console.WriteLine("\nCompilation Arguments:");
+    foreach (var arg in editInfo.ArgumentDependencies)
+    {
+        Console.WriteLine($"  {arg.ParameterName} = {arg.ParameterValue}");
+    }
+    
+    // Check for child resources
+    if (editInfo.ChildResourceList.Count > 0)
+    {
+        Console.WriteLine("\nChild Resources:");
+        foreach (var child in editInfo.ChildResourceList)
+        {
+            Console.WriteLine($"  {child}");
+        }
+    }
+}
+```
+
+## Checking File Dependencies
+
+```csharp
+var editInfo = resource.EditInfo;
+
+if (editInfo != null)
+{
+    // Check if a specific file was used as input
+    var usedSourceFile = editInfo.InputDependencies
+        .Any(dep => dep.ContentRelativeFilename.EndsWith(".fbx"));
+    
+    if (usedSourceFile)
+    {
+        Console.WriteLine("This resource was compiled from an FBX file");
+    }
+    
+    // Get all texture inputs
+    var textureInputs = editInfo.InputDependencies
+        .Where(dep => dep.ContentRelativeFilename.EndsWith(".tga") 
+                   || dep.ContentRelativeFilename.EndsWith(".png"))
+        .ToList();
+}
+```
+
+## Searchable User Data
+
+The `SearchableUserData` property stores custom metadata as key-value pairs:
+
+```csharp
+var userData = editInfo.SearchableUserData;
+
+if (userData.Properties.ContainsKey("author"))
+{
+    var author = userData.Properties["author"];
+    Console.WriteLine($"Author: {author}");
+}
+
+// User data can contain integers, floats, or strings
+foreach (var kvp in userData.Properties)
+{
+    Console.WriteLine($"{kvp.Key}: {kvp.Value.Value}");
+}
+```
+
+## Text Output
+
+```csharp
+using var writer = new IndentedTextWriter(Console.Out);
+editInfo.WriteText(writer);
+```
+
+Output is in KeyValues1 format:
+```
+ResourceEditInfo
+{
+    InputDependencies
+    [
+        {
+            ContentRelativeFilename "models/props/barrel.fbx"
+            ContentSearchPath "game"
+            FileCRC 0x12345678
+        }
+    ]
+    ArgumentDependencies
+    [
+        {
+            ParameterName "scale"
+            ParameterValue "1.0"
+            Fingerprint 0xABCDEF12
+        }
+    ]
+}
+```
+
+## Dependency Validation
+
+```csharp
+public bool ValidateInputFiles(ResourceEditInfo editInfo)
+{
+    foreach (var dependency in editInfo.InputDependencies)
+    {
+        var fullPath = Path.Combine(
+            dependency.ContentSearchPath,
+            dependency.ContentRelativeFilename
+        );
+        
+        if (!File.Exists(fullPath))
+        {
+            Console.WriteLine($"Missing dependency: {fullPath}");
+            return false;
+        }
+        
+        // Could also verify CRC matches
+        // var actualCRC = CalculateCRC(fullPath);
+        // if (actualCRC != dependency.FileCRC) { ... }
+    }
+    
+    return true;
+}
+```
+
+## Common Patterns
+
+### Finding Source Assets
+
+```csharp
+public IEnumerable<string> GetSourceAssets(Resource resource)
+{
+    var editInfo = resource.EditInfo;
+    if (editInfo == null) yield break;
+    
+    foreach (var input in editInfo.InputDependencies)
+    {
+        yield return Path.Combine(
+            input.ContentSearchPath,
+            input.ContentRelativeFilename
+        );
+    }
+}
+```
+
+### Checking Compiler Version
+
+```csharp
+var compilerInfo = editInfo.SpecialDependencies
+    .FirstOrDefault(d => d.CompilerIdentifier.Contains("resourcecompiler"));
+
+if (compilerInfo != null)
+{
+    Console.WriteLine($"Compiled with: {compilerInfo.CompilerIdentifier}");
+}
+```
+
+## Notes
+
+- REDI blocks use legacy serialization and preserve raw binary data when not modified
+- Some resources may not have REDI blocks (runtime-generated content)
+- CRC values help detect when source files have changed
+- The block is primarily for tooling and not required for runtime loading
+
+## See Also
+
+- [RERL Block](/api/blocks/rerl) - External resource references
+- [DATA Block](/api/blocks/data) - Main resource data
+- [NTRO Block](/api/blocks/ntro) - Type introspection

@@ -1,0 +1,126 @@
+---
+title: ParticleSystem
+description: API reference for the ParticleSystem resource type class
+---
+
+The `ParticleSystem` class represents a particle system resource.
+
+## Methods
+
+### GetRenderers
+
+Gets the renderers in the particle system.
+
+<ResponseField name="returns" type="IEnumerable<KVObject>">
+  Enumerable of renderer objects.
+</ResponseField>
+
+### GetOperators
+
+Gets the operators in the particle system.
+
+<ResponseField name="returns" type="IEnumerable<KVObject>">
+  Enumerable of operator objects.
+</ResponseField>
+
+### GetForceGenerators
+
+Gets the force generators in the particle system.
+
+<ResponseField name="returns" type="IEnumerable<KVObject>">
+  Enumerable of force generator objects.
+</ResponseField>
+
+### GetInitializers
+
+Gets the initializers in the particle system.
+
+<ResponseField name="returns" type="IEnumerable<KVObject>">
+  Enumerable of initializer objects.
+</ResponseField>
+
+### GetEmitters
+
+Gets the emitters in the particle system.
+
+<ResponseField name="returns" type="IEnumerable<KVObject>">
+  Enumerable of emitter objects.
+</ResponseField>
+
+### GetPreEmissionOperators
+
+Gets the pre-emission operators in the particle system.
+
+<ResponseField name="returns" type="IEnumerable<KVObject>">
+  Enumerable of pre-emission operator objects.
+</ResponseField>
+
+### GetChildParticleNames
+
+Gets the names of child particles.
+
+<ParamField path="enabledOnly" type="bool" default="false">
+  If true, only returns enabled child particles.
+</ParamField>
+
+<ResponseField name="returns" type="IEnumerable<string>">
+  Enumerable of child particle names.
+</ResponseField>
+
+## Usage Example
+
+```csharp
+var resource = new Resource();
+var particleSystem = resource.DataBlock as ParticleSystem;
+
+if (particleSystem != null)
+{
+    // Get all renderers
+    var renderers = particleSystem.GetRenderers();
+    Console.WriteLine($"Renderers: {renderers.Count()}");
+    foreach (var renderer in renderers)
+    {
+        var className = renderer.GetProperty<string>("_class");
+        Console.WriteLine($"  Renderer: {className}");
+    }
+    
+    // Get all operators
+    var operators = particleSystem.GetOperators();
+    Console.WriteLine($"Operators: {operators.Count()}");
+    foreach (var op in operators)
+    {
+        var className = op.GetProperty<string>("_class");
+        Console.WriteLine($"  Operator: {className}");
+    }
+    
+    // Get initializers
+    var initializers = particleSystem.GetInitializers();
+    Console.WriteLine($"Initializers: {initializers.Count()}");
+    foreach (var init in initializers)
+    {
+        var className = init.GetProperty<string>("_class");
+        Console.WriteLine($"  Initializer: {className}");
+    }
+    
+    // Get emitters
+    var emitters = particleSystem.GetEmitters();
+    Console.WriteLine($"Emitters: {emitters.Count()}");
+    foreach (var emitter in emitters)
+    {
+        var className = emitter.GetProperty<string>("_class");
+        Console.WriteLine($"  Emitter: {className}");
+    }
+    
+    // Get child particles (enabled only)
+    var children = particleSystem.GetChildParticleNames(enabledOnly: true);
+    Console.WriteLine($"Child particles: {children.Count()}");
+    foreach (var child in children)
+    {
+        Console.WriteLine($"  - {child}");
+    }
+    
+    // Get force generators
+    var forceGenerators = particleSystem.GetForceGenerators();
+    Console.WriteLine($"Force generators: {forceGenerators.Count()}");
+}
+```

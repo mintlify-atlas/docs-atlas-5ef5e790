@@ -1,122 +1,142 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "ValveResourceFormat",
+  "theme": "aspen",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#FF6B35",
+    "light": "#FFA26B",
+    "dark": "#CC4419"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/ValveResourceFormat/ValveResourceFormat"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/ValveResourceFormat/ValveResourceFormat"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "installation",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/resource-files",
+              "concepts/resource-types",
+              "concepts/blocks",
+              "concepts/binary-keyvalues"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "guides/reading-resources",
+              "guides/working-with-vpk",
+              "guides/extracting-textures",
+              "guides/exporting-models",
+              "guides/decompiling-materials",
+              "guides/parsing-maps",
+              "guides/handling-shaders"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "CLI Tool",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "cli/overview",
+              "cli/commands",
+              "cli/examples"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/custom-loaders",
+              "advanced/performance",
+              "advanced/compression"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Core",
             "pages": [
-              "api-reference/introduction"
+              "api/resource",
+              "api/resource-type",
+              "api/block"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Resource Types",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/resource-types/texture",
+              "api/resource-types/material",
+              "api/resource-types/model",
+              "api/resource-types/mesh",
+              "api/resource-types/sound",
+              "api/resource-types/world",
+              "api/resource-types/particle-system",
+              "api/resource-types/binary-kv3"
+            ]
+          },
+          {
+            "group": "IO & Export",
+            "pages": [
+              "api/io/file-extract",
+              "api/io/texture-extract",
+              "api/io/material-extract",
+              "api/io/model-extract",
+              "api/io/gltf-exporter"
+            ]
+          },
+          {
+            "group": "Blocks",
+            "pages": [
+              "api/blocks/data",
+              "api/blocks/rerl",
+              "api/blocks/redi",
+              "api/blocks/ntro"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "api/utils/compression",
+              "api/utils/texture-decoders"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Source 2 Viewer",
+        "groups": [
+          {
+            "group": "GUI Application",
+            "pages": [
+              "gui/overview",
+              "gui/features",
+              "gui/vpk-browser",
+              "gui/asset-viewer",
+              "gui/settings"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

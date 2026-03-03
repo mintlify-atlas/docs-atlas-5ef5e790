@@ -1,0 +1,184 @@
+---
+title: ValveResourceFormat
+description: A C# library for parsing, decompiling, and exporting Valve's Source 2 resource file formats
+---
+
+# ValveResourceFormat
+
+Valve's Source 2 resource file format parser, decompiler, and exporter. ValveResourceFormat (VRF) is a powerful C# library that enables you to work with Source 2 game assets programmatically.
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Get started with NuGet package installation
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Parse your first Source 2 resource in minutes
+  </Card>
+  <Card title="API Reference" icon="code" href="https://s2v.app/ValveResourceFormat/api/ValveResourceFormat.html">
+    Explore the complete API documentation
+  </Card>
+  <Card title="GitHub" icon="github" href="https://github.com/ValveResourceFormat/ValveResourceFormat">
+    View source code and contribute
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Comprehensive Format Support" icon="file">
+    Parse 50+ Source 2 resource types including models, textures, materials, maps, particles, animations, and more
+  </Card>
+  <Card title="VPK Package Reading" icon="box">
+    Extract and read files from Valve's VPK archives using the integrated ValvePak library
+  </Card>
+  <Card title="Asset Export" icon="file-export">
+    Export textures to PNG/EXR, models to glTF, and materials to standard formats
+  </Card>
+  <Card title="Modern C# API" icon="brackets-curly">
+    Built with .NET 10.0 featuring nullable reference types, AOT compatibility, and modern patterns
+  </Card>
+</CardGroup>
+
+## Supported Resource Types
+
+ValveResourceFormat supports a wide range of Source 2 compiled resource files (files ending with `_c`):
+
+<AccordionGroup>
+  <Accordion title="Models & Meshes">
+    - **vmdl** - Model files with geometry and materials
+    - **vmesh** - Mesh data
+    - **vanim** - Animation data
+    - **vanmgrph** - Animation graphs
+    - **vagrp** - Animation groups
+    - **vmorf** - Morph sets
+    - **vphys** - Physics collision meshes
+  </Accordion>
+
+  <Accordion title="Textures & Materials">
+    - **vtex** - Compiled textures with multiple format support
+    - **vmat** - Material definitions
+    - **vcompmat** - Composite materials
+  </Accordion>
+
+  <Accordion title="Maps & Worlds">
+    - **vmap** - Map files
+    - **vwrld** - World files
+    - **vwnod** - World nodes
+    - **vents** - Entity lumps
+    - **vvis** - World visibility data
+  </Accordion>
+
+  <Accordion title="Particles & Effects">
+    - **vpcf** - Particle systems
+    - **vpsf/vsnap** - Particle snapshots
+    - **vpost** - Post-processing settings
+  </Accordion>
+
+  <Accordion title="Audio">
+    - **vsnd** - Compiled sounds
+    - **vsndevts** - Sound event scripts
+    - **vsndstck** - Sound stack scripts
+    - **vmix** - Audio mixing data
+  </Accordion>
+
+  <Accordion title="UI (Panorama)">
+    - **vxml** - Panorama layouts
+    - **vcss** - Panorama styles
+    - **vjs** - Panorama scripts
+    - **vts** - Panorama TypeScript
+    - **vsvg** - Panorama vector graphics
+    - **vpdi** - Panorama dynamic images
+  </Accordion>
+
+  <Accordion title="Other Formats">
+    - **vdata** - Generic data files
+    - **vsmart** - Smart props
+    - **vcd/vcdlist** - Choreo scenes
+    - **vrr** - Response rules
+    - **vpulse** - Pulse graph definitions
+    - **vcs** - Compiled shaders
+    - **vpk** - Package files (via ValvePak)
+  </Accordion>
+</AccordionGroup>
+
+## Supported Games
+
+ValveResourceFormat works with assets from all Source 2 games:
+
+- Half-Life: Alyx
+- Dota 2
+- Counter-Strike 2
+- Artifact
+- Dota Underlords
+- The Lab
+- Destinations
+- SteamVR Home
+- And any other Source 2 game or mod
+
+<Note>
+Source 2 resource files typically end with `_c` suffix (e.g., `weapon.vmdl_c`, `texture.vtex_c`). This indicates they are compiled binary formats, not the original source assets.
+</Note>
+
+## Binary Format Support
+
+The library handles various binary formats and encodings:
+
+| Magic | Description |
+|-------|-------------|
+| `0x4B563301-05` | Binary KeyValues3 (versions 1-5) |
+| `0x03564B56` | VKV\x03 - Binary KV3 with compression |
+| `0x564B4256` | VBKV - Binary KeyValues1 |
+| `0x55AA1234` | VPK - Valve packages |
+| `0x44434356` | VCCD - Closed captions |
+| `0x32736376` | vcs2 - Compiled shaders |
+| `0xC4CCACE8/9` | Tools asset info |
+| `0x414D5A4C` | LZMA compression |
+| `0xFEEDFACE` | Navigation meshes |
+| `VFONT1` | Encrypted font files |
+
+## Source 2 Viewer Application
+
+This library powers the **Source 2 Viewer** desktop application, which provides a GUI for browsing and exporting Source 2 assets.
+
+<Card title="Download Source 2 Viewer" icon="window" href="https://s2v.app/">
+  Get the free desktop application for Windows, macOS, and Linux
+</Card>
+
+## Requirements
+
+- **.NET 10.0** or later
+- Works on Windows, macOS, and Linux
+- Native AOT compatible
+
+<Warning>
+**Breaking Changes Notice**: This library is primarily designed for Source 2 Viewer. Updates may contain breaking API changes. Source 2 file formats can also change with game updates, requiring library updates to maintain compatibility.
+</Warning>
+
+## Next Steps
+
+<Steps>
+  <Step title="Install the Package">
+    Add ValveResourceFormat to your project via NuGet
+    
+    ```bash
+    dotnet add package ValveResourceFormat
+    ```
+  </Step>
+  
+  <Step title="Read Your First Resource">
+    Parse a Source 2 texture file and export it as PNG
+    
+    ```csharp
+    using var resource = new Resource();
+    resource.Read("textures/debug.vtex_c");
+    
+    var texture = (Texture)resource.DataBlock;
+    using var bitmap = texture.GenerateBitmap();
+    var png = TextureExtract.ToPngImage(bitmap);
+    ```
+  </Step>
+  
+  <Step title="Explore More">
+    Check out the [Quick Start guide](/quickstart) and [Guides](/guides/reading-resources) for complete examples
+  </Step>
+</Steps>
